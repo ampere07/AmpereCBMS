@@ -7,7 +7,6 @@ use App\Models\AppCity;
 use App\Models\AppBarangay;
 use App\Models\AppVillage;
 use App\Models\AppPlan;
-use App\Models\AppPeriod;
 use App\Models\AppGroup;
 use App\Models\AppApplication;
 use App\Services\TableCheckService;
@@ -83,13 +82,7 @@ class ApplicationFormController extends Controller
             // 2. Handle Plan data
             $planId = $this->getOrCreatePlan($request->plan);
             
-            // 3. Handle Promo/Period data
-            $promoId = null;
-            if ($request->promo && $request->promo !== 'None') {
-                $promoId = $this->getOrCreatePeriod($request->promo);
-            }
-            
-            // 4. Create the APP_APPLICATIONS record
+            // 3. Create the APP_APPLICATIONS record
             $application = new AppApplication();
             $application->create_date = now()->format('Y-m-d');
             $application->create_time = now()->format('H:i:s');
@@ -107,7 +100,8 @@ class ApplicationFormController extends Controller
             $application->nearest_landmark1 = $request->nearestLandmark1;
             $application->nearest_landmark2 = $request->nearestLandmark2;
             $application->plan_id = $planId;
-            $application->promo_id = $promoId;
+            // We store promo as a text field now, not a foreign key
+            $application->promo_id = null; // No longer using promo_id for foreign key
             $application->primary_consent = true;
             $application->primary_consent_at = now();
             $application->source = 'Web Form';
@@ -116,7 +110,7 @@ class ApplicationFormController extends Controller
             $application->status = 'pending';
             $application->save();
 
-            // 5. Handle document uploads
+            // 4. Handle document uploads
             $this->handleDocumentUploads($request, $application);
             
             DB::commit();
@@ -191,18 +185,6 @@ class ApplicationFormController extends Controller
     }
 
     /**
-     * Get or create a period/promo
-     *
-     * @param string $promoName
-     * @return int
-     */
-    private function getOrCreatePeriod($promoName)
-    {
-        $period = AppPeriod::firstOrCreate(['name' => $promoName]);
-        return $period->id;
-    }
-
-    /**
      * Handle uploading documents for an application
      *
      * @param  \Illuminate\Http\Request  $request
@@ -251,7 +233,7 @@ class ApplicationFormController extends Controller
      */
     public function index()
     {
-        $applications = AppApplication::with(['region', 'city', 'barangay', 'plan', 'promo'])
+        $applications = AppApplication::with(['region', 'city', 'barangay', 'plan'])
             ->orderByRaw('create_date DESC, create_time DESC')
             ->paginate(10);
         
@@ -268,7 +250,7 @@ class ApplicationFormController extends Controller
      */
     public function show($id)
     {
-        $application = AppApplication::with(['region', 'city', 'barangay', 'village', 'plan', 'promo', 'group'])
+        $application = AppApplication::with(['region', 'city', 'barangay', 'village', 'plan', 'group'])
             ->findOrFail($id);
         
         return response()->json([

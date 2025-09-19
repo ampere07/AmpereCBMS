@@ -75,13 +75,13 @@ class AppApplication extends Model
         return $this->belongsTo(AppPlan::class, 'plan_id');
     }
     
-    public function promo()
-    {
-        return $this->belongsTo(AppPeriod::class, 'promo_id');
-    }
-    
     public function group()
     {
         return $this->belongsTo(AppGroup::class, 'group_id');
+    }
+    
+    public function documents()
+    {
+        return $this->hasMany(ApplicationDocument::class, 'application_id');
     }
 }

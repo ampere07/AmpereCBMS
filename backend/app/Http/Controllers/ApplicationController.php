@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
+use App\Models\AppApplication;
 use App\Services\TableCheckService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -33,17 +33,14 @@ class ApplicationController extends Controller
         }
         
         // First check if the email already exists
-        $existingUser = User::where('email', $request->email)->first();
+        $existingApplication = AppApplication::where('email', $request->email)->first();
         
-        if ($existingUser) {
+        if ($existingApplication) {
             // If this is testing, allow reusing the email
             if (app()->environment('local', 'testing')) {
-                // Delete any related application documents
-                \App\Models\ApplicationDocument::where('user_id', $existingUser->id)->delete();
-                
-                // Delete the user
-                $existingUser->delete();
-                Log::info('Development environment: Deleted existing user to allow resubmission.');
+                // Delete the application
+                $existingApplication->delete();
+                Log::info('Development environment: Deleted existing application to allow resubmission.');
             } else {
                 // In production, return a more helpful message
                 return response()->json([
@@ -60,7 +57,7 @@ class ApplicationController extends Controller
         
         // Only add the unique constraint in production
         if (!app()->environment('local', 'testing')) {
-            $emailRule .= '|unique:users';
+            $emailRule .= '|unique:APP_APPLICATIONS';
         }
         
         $validator = Validator::make($request->all(), [
@@ -83,46 +80,60 @@ class ApplicationController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::create([
-            'first_name' => $request->first_name,
-            'middle_name' => $request->middle_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'phone_number' => $request->phone_number,
-            'address_line1' => $request->address_line1,
-            'city' => $request->city,
-            'province' => $request->province,
-            'postal_code' => $request->postal_code ?: '1000',
-            'application_status' => $request->application_status ?: 'pending',
-            'application_date' => $request->application_date ?: now(),
-            'is_applicant' => true,  // Always true for applicants
-        ]);
-
-        // Create token for document uploads
-        $token = $user->createToken('application-token')->plainTextToken;
+        $application = new AppApplication();
+        $application->create_date = now()->format('Y-m-d');
+        $application->create_time = now()->format('H:i:s');
+        $application->email = $request->email;
+        $application->first_name = $request->first_name;
+        $application->middle_initial = $request->middle_name;
+        $application->last_name = $request->last_name;
+        $application->mobile = $request->phone_number;
+        $application->address_line = $request->address_line1;
+        $application->region_id = null; // Set appropriately if available
+        $application->city_id = null; // Set appropriately if available
+        $application->borough_id = null; // Set appropriately if available
+        $application->status = $request->application_status ?: 'pending';
+        $application->source = 'Web Form';
+        $application->ip_address = $request->ip();
+        $application->user_agent = $request->header('User-Agent');
+        $application->primary_consent = true;
+        $application->primary_consent_at = now();
+        $application->save();
+        
+        // No token creation since we're not using User model
 
         return response()->json([
             'message' => 'Application submitted successfully',
-            'user' => $user,
-            'token' => $token
+            'application' => $application
         ], 201);
     }
 
     /**
-     * Get application information for the authenticated user
+     * Get application information
      *
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function getApplicationInfo()
+    public function getApplicationInfo(Request $request)
     {
-        $user = auth()->user();
+        $email = $request->input('email');
         
-        // Include application documents
-        $user->load('applicationDocuments');
+        if (!$email) {
+            return response()->json([
+                'message' => 'Email is required'
+            ], 400);
+        }
+        
+        $application = AppApplication::where('email', $email)->first();
+        
+        if (!$application) {
+            return response()->json([
+                'message' => 'Application not found'
+            ], 404);
+        }
         
         return response()->json([
-            'application' => $user
+            'application' => $application
         ]);
     }
 
@@ -137,23 +148,24 @@ class ApplicationController extends Controller
     {
         // This should be protected by admin middleware in routes
         $validator = Validator::make($request->all(), [
-            'application_status' => 'required|string|in:pending,approved,rejected',
-            'application_notes' => 'nullable|string',
+            'status' => 'required|string|in:pending,approved,rejected',
+            'notes' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::findOrFail($id);
+        $application = AppApplication::findOrFail($id);
         
-        $user->application_status = $request->application_status;
-        $user->application_notes = $request->application_notes;
-        $user->save();
+        $application->status = $request->status;
+        $application->update_date = now()->format('Y-m-d');
+        $application->update_time = now()->format('H:i:s');
+        $application->save();
         
         return response()->json([
             'message' => 'Application status updated',
-            'user' => $user
+            'application' => $application
         ]);
     }
 
@@ -168,13 +180,13 @@ class ApplicationController extends Controller
         // This should be protected by admin middleware in routes
         $status = $request->query('status');
         
-        $query = User::where('is_applicant', true);
+        $query = AppApplication::query();
         
         if ($status) {
-            $query->where('application_status', $status);
+            $query->where('status', $status);
         }
         
-        $applications = $query->with('applicationDocuments')->paginate(10);
+        $applications = $query->with(['region', 'city', 'barangay', 'village', 'plan'])->paginate(10);
         
         return response()->json([
             'applications' => $applications

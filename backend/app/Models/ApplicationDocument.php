@@ -15,7 +15,7 @@ class ApplicationDocument extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',
+        'application_id',
         'document_type',
         'document_name',
         'file_path',
@@ -39,18 +39,10 @@ class ApplicationDocument extends Model
     ];
 
     /**
-     * Get the user that owns the document.
+     * Get the application that owns the document.
      */
-    public function user()
+    public function application()
     {
-        return $this->belongsTo(User::class);
-    }
-
-    /**
-     * Get the user who verified the document.
-     */
-    public function verifier()
-    {
-        return $this->belongsTo(User::class, 'verified_by');
+        return $this->belongsTo(AppApplication::class, 'application_id');
     }
 }

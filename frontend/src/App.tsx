@@ -371,38 +371,57 @@ function App() {
     // Create FormData object for file uploads
     const submissionData = new FormData();
     
-    // Add form fields to FormData
-    submissionData.append('first_name', formData.firstName);
-    submissionData.append('middle_name', formData.middleInitial);
-    submissionData.append('last_name', formData.lastName);
+    // Add form fields to FormData in a format matching the updated API
+    submissionData.append('firstName', formData.firstName);
+    submissionData.append('middleInitial', formData.middleInitial);
+    submissionData.append('lastName', formData.lastName);
     submissionData.append('email', formData.email);
-    // Generate a random password (will be changed by user later)
-    const tempPassword = Math.random().toString(36).slice(-8);
-    submissionData.append('password', tempPassword);
-    submissionData.append('password_confirmation', tempPassword);
-    submissionData.append('phone_number', formData.mobile);
+    submissionData.append('mobile', formData.mobile);
+    submissionData.append('secondaryMobile', formData.secondaryMobile || '');
     
-    // Add address information
-    submissionData.append('address_line1', formData.installationAddress);
-    submissionData.append('city', formData.city);
-    submissionData.append('province', formData.region);
-    submissionData.append('postal_code', '1000'); // Default postal code
+    // Add location information
+    // Convert ID-based selection to name for storing
+    const selectedRegion = formData.region ? geographicData.regions.find(r => r.id === formData.region)?.name || '' : '';
+    const selectedCity = formData.city ? availableCities.find(c => c.id === formData.city)?.name || '' : '';
+    const selectedBarangay = formData.barangay ? availableBarangays.find(b => b.id === formData.barangay)?.name || '' : '';
     
-    // Add additional information
-    submissionData.append('application_status', 'pending');
-    submissionData.append('application_date', new Date().toISOString().split('T')[0]);
-    submissionData.append('is_applicant', 'true');
+    submissionData.append('region', selectedRegion);
+    submissionData.append('city', selectedCity);
+    submissionData.append('barangay', selectedBarangay);
+    submissionData.append('installationAddress', formData.installationAddress);
+    submissionData.append('landmark', formData.landmark);
+    submissionData.append('nearestLandmark1', formData.nearestLandmark1);
+    submissionData.append('nearestLandmark2', formData.nearestLandmark2);
+    
+    // Add plan information
+    submissionData.append('plan', formData.plan);
+    submissionData.append('promo', formData.promo);
+    
+    // Also append document files directly to the application submission
+    // This way they are stored in the correct fields in the database
+    if (formData.proofOfBilling) {
+      submissionData.append('proofOfBilling', formData.proofOfBilling);
+    }
+    
+    if (formData.governmentIdPrimary) {
+      submissionData.append('governmentIdPrimary', formData.governmentIdPrimary);
+    }
+    
+    if (formData.governmentIdSecondary) {
+      submissionData.append('governmentIdSecondary', formData.governmentIdSecondary);
+    }
+    
+    if (formData.houseFrontPicture) {
+      submissionData.append('houseFrontPicture', formData.houseFrontPicture);
+    }
     
     try {
       // First submit the application form
       const apiBaseUrl = 'http://127.0.0.1:8080'; // Update this to match your server
       
-      // Get CSRF token first
-      await fetch(`${apiBaseUrl}/sanctum/csrf-cookie`, {
-        credentials: 'include'
-      });
+      // No need for CSRF token with the updated API
       
-      const response = await fetch(`${apiBaseUrl}/api/application/submit`, {
+      const response = await fetch(`${apiBaseUrl}/api/application/store`, {
         method: 'POST',
         body: submissionData,
         credentials: 'include',
@@ -423,7 +442,7 @@ function App() {
       }
       
       const result = await response.json();
-      const userId = result.user.id;
+      const applicationId = result.application.id;
       
       // Now upload documents if they exist
       const documentsToUpload = [
@@ -437,17 +456,15 @@ function App() {
       for (const doc of documentsToUpload) {
         if (doc.file) {
           const docFormData = new FormData();
-          docFormData.append('user_id', userId);
+          docFormData.append('application_id', applicationId.toString());
           docFormData.append('document_type', doc.type);
           docFormData.append('document', doc.file);
           
           const docResponse = await fetch(`${apiBaseUrl}/api/documents`, {
             method: 'POST',
             body: docFormData,
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${result.token}`
-            }
+            credentials: 'include'
+            // No token needed as we removed the authentication requirement
           });
           
           if (!docResponse.ok) {

@@ -43,13 +43,6 @@ CREATE TABLE IF NOT EXISTS APP_PLANS (
     price DECIMAL(10, 2)
 );
 
--- Create APP_PERIODS table
-CREATE TABLE IF NOT EXISTS APP_PERIODS (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    description TEXT
-);
-
 -- Create APP_PARTNERS table
 CREATE TABLE IF NOT EXISTS APP_PARTNERS (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -125,35 +118,7 @@ CREATE TABLE IF NOT EXISTS APP_APPLICATIONS (
     FOREIGN KEY (borough_id) REFERENCES APP_BARANGAYS(id),
     FOREIGN KEY (village_id) REFERENCES APP_VILLAGES(id),
     FOREIGN KEY (plan_id) REFERENCES APP_PLANS(id),
-    FOREIGN KEY (promo_id) REFERENCES APP_PERIODS(id),
     FOREIGN KEY (group_id) REFERENCES APP_GROUPS(id)
-);
-
--- Create users table (simplified version for Laravel authentication)
-CREATE TABLE IF NOT EXISTS users (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    first_name VARCHAR(255) NOT NULL,
-    middle_name VARCHAR(255),
-    last_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    email_verified_at TIMESTAMP NULL,
-    password VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(255),
-    birth_date DATE,
-    gender VARCHAR(255),
-    civil_status VARCHAR(255),
-    address_line1 VARCHAR(255),
-    address_line2 VARCHAR(255),
-    city VARCHAR(255),
-    province VARCHAR(255),
-    postal_code VARCHAR(255),
-    application_status VARCHAR(255) DEFAULT 'pending',
-    application_notes TEXT,
-    application_date DATE,
-    is_applicant BOOLEAN DEFAULT FALSE,
-    is_admin BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP NULL,
-    updated_at TIMESTAMP NULL
 );
 
 -- Create personal_access_tokens table for Laravel Sanctum
@@ -179,5 +144,4 @@ CREATE INDEX idx_app_city ON APP_APPLICATIONS(city_id);
 CREATE INDEX idx_app_borough ON APP_APPLICATIONS(borough_id);
 CREATE INDEX idx_app_village ON APP_APPLICATIONS(village_id);
 CREATE INDEX idx_app_plan ON APP_APPLICATIONS(plan_id);
-CREATE INDEX idx_app_promo ON APP_APPLICATIONS(promo_id);
 CREATE INDEX idx_app_group ON APP_APPLICATIONS(group_id);

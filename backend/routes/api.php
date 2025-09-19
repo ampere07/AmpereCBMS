@@ -33,19 +33,20 @@ Route::middleware('ensure.tables')->group(function () {
 // Route::post('/application/submit', [ApplicationController::class, 'submitApplication']);
 // Route::post('/documents', [ApplicationDocumentController::class, 'store']);
 // Route::get('/documents/user/{userId}', [ApplicationDocumentController::class, 'getUserDocuments']);
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+// We're not using auth:sanctum anymore
+// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//     return $request->user();
+// });
 
 // Document routes - with table check
 Route::middleware('ensure.tables')->group(function () {
     Route::post('/documents', [ApplicationDocumentController::class, 'store']);
-    Route::get('/documents/user/{userId}', [ApplicationDocumentController::class, 'getUserDocuments']);
+    Route::get('/documents/application/{applicationId}', [ApplicationDocumentController::class, 'getUserDocuments']);
 });
 
-// Protected Application Routes
-Route::middleware(['auth:sanctum', 'ensure.tables'])->group(function () {
-    // User Application Routes
+// Application Routes
+Route::middleware(['ensure.tables'])->group(function () {
+    // Application Routes
     Route::get('/application', [ApplicationController::class, 'getApplicationInfo']);
     
     // Document Routes
@@ -55,7 +56,7 @@ Route::middleware(['auth:sanctum', 'ensure.tables'])->group(function () {
 });
 
 // Admin Routes
-Route::middleware(['auth:sanctum', 'admin', 'ensure.tables'])->group(function () {
+Route::middleware(['ensure.tables'])->group(function () {
     // Application Management
     Route::get('/admin/applications', [ApplicationController::class, 'getAllApplications']);
     Route::patch('/admin/applications/{id}/status', [ApplicationController::class, 'updateApplicationStatus']);
