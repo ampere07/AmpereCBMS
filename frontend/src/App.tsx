@@ -221,7 +221,7 @@ const geographicData: GeographicDataType = {
   }
 };
 
-function App() {
+const App: React.FC = () => {
   interface FormState {
     email: string;
     mobile: string;
@@ -235,8 +235,9 @@ function App() {
     location: string;
     installationAddress: string;
     landmark: string;
-    nearestLandmark1: string;
-    nearestLandmark2: string;
+    nearestLandmark1Image: File | null;
+    nearestLandmark2Image: File | null;
+    referredBy: string;
     plan: string;
     promo: string;
     proofOfBilling: File | null;
@@ -259,8 +260,9 @@ function App() {
     location: '',
     installationAddress: '',
     landmark: '',
-    nearestLandmark1: '',
-    nearestLandmark2: '',
+    nearestLandmark1Image: null,
+    nearestLandmark2Image: null,
+    referredBy: '',
     plan: '',
     promo: 'None',
     proofOfBilling: null,
@@ -390,8 +392,7 @@ function App() {
     submissionData.append('barangay', selectedBarangay);
     submissionData.append('installationAddress', formData.installationAddress);
     submissionData.append('landmark', formData.landmark);
-    submissionData.append('nearestLandmark1', formData.nearestLandmark1);
-    submissionData.append('nearestLandmark2', formData.nearestLandmark2);
+    submissionData.append('referredBy', formData.referredBy);
     
     // Add plan information
     submissionData.append('plan', formData.plan);
@@ -413,6 +414,14 @@ function App() {
     
     if (formData.houseFrontPicture) {
       submissionData.append('houseFrontPicture', formData.houseFrontPicture);
+    }
+    
+    if (formData.nearestLandmark1Image) {
+      submissionData.append('nearestLandmark1Image', formData.nearestLandmark1Image);
+    }
+    
+    if (formData.nearestLandmark2Image) {
+      submissionData.append('nearestLandmark2Image', formData.nearestLandmark2Image);
     }
     
     try {
@@ -442,36 +451,6 @@ function App() {
       }
       
       const result = await response.json();
-      const applicationId = result.application.id;
-      
-      // Now upload documents if they exist
-      const documentsToUpload = [
-        { file: formData.proofOfBilling, type: 'proof_of_billing' },
-        { file: formData.governmentIdPrimary, type: 'government_id_primary' },
-        { file: formData.governmentIdSecondary, type: 'government_id_secondary' },
-        { file: formData.houseFrontPicture, type: 'house_front_picture' }
-      ];
-      
-      // Upload each document
-      for (const doc of documentsToUpload) {
-        if (doc.file) {
-          const docFormData = new FormData();
-          docFormData.append('application_id', applicationId.toString());
-          docFormData.append('document_type', doc.type);
-          docFormData.append('document', doc.file);
-          
-          const docResponse = await fetch(`${apiBaseUrl}/api/documents`, {
-            method: 'POST',
-            body: docFormData,
-            credentials: 'include'
-            // No token needed as we removed the authentication requirement
-          });
-          
-          if (!docResponse.ok) {
-            console.error(`Failed to upload ${doc.type}:`, await docResponse.json());
-          }
-        }
-      }
       
       alert('Form submitted successfully! Your application is now pending approval.');
       handleReset();
@@ -505,8 +484,9 @@ function App() {
       location: '',
       installationAddress: '',
       landmark: '',
-      nearestLandmark1: '',
-      nearestLandmark2: '',
+      nearestLandmark1Image: null,
+      nearestLandmark2Image: null,
+      referredBy: '',
       plan: '',
       promo: 'None',
       proofOfBilling: null,
@@ -754,33 +734,62 @@ function App() {
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark1">
-                  Nearest Landmark #1 <span className="text-red-500">*</span>
+                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark1Image">
+                  Nearest Landmark #1 Image <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  id="nearestLandmark1"
-                  name="nearestLandmark1"
-                  value={formData.nearestLandmark1}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Enter nearest landmark"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
+                <div className="flex items-center">
+                  <input
+                    type="file"
+                    id="nearestLandmark1Image"
+                    name="nearestLandmark1Image"
+                    onChange={handleFileChange}
+                    required
+                    accept=".jpg,.jpeg,.png"
+                    className="hidden"
+                  />
+                  <label htmlFor="nearestLandmark1Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+                    Choose Image
+                  </label>
+                  <span className="ml-3 text-sm text-gray-600">
+                    {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
+                  </span>
+                </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark2">
-                  Nearest Landmark #2 <span className="text-red-500">*</span>
+                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark2Image">
+                  Nearest Landmark #2 Image <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="file"
+                    id="nearestLandmark2Image"
+                    name="nearestLandmark2Image"
+                    onChange={handleFileChange}
+                    required
+                    accept=".jpg,.jpeg,.png"
+                    className="hidden"
+                  />
+                  <label htmlFor="nearestLandmark2Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+                    Choose Image
+                  </label>
+                  <span className="ml-3 text-sm text-gray-600">
+                    {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2" htmlFor="referredBy">
+                  Referred By
                 </label>
                 <input
                   type="text"
-                  id="nearestLandmark2"
-                  name="nearestLandmark2"
-                  value={formData.nearestLandmark2}
+                  id="referredBy"
+                  name="referredBy"
+                  value={formData.referredBy}
                   onChange={handleInputChange}
-                  required
-                  placeholder="Enter second nearest landmark"
+                  placeholder="Enter referrer name (optional)"
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
@@ -805,10 +814,10 @@ function App() {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">Select plan</option>
-                  <option value="basic">Basic Plan - 20 Mbps</option>
-                  <option value="standard">Standard Plan - 50 Mbps</option>
-                  <option value="premium">Premium Plan - 100 Mbps</option>
-                  <option value="business">Business Plan - 200 Mbps</option>
+                  <option value="Basic Plan - 20 Mbps">Basic Plan - 20 Mbps</option>
+                  <option value="Standard Plan - 50 Mbps">Standard Plan - 50 Mbps</option>
+                  <option value="Premium Plan - 100 Mbps">Premium Plan - 100 Mbps</option>
+                  <option value="Business Plan - 200 Mbps">Business Plan - 200 Mbps</option>
                 </select>
               </div>
               
@@ -974,6 +983,6 @@ function App() {
       </main>
     </div>
   );
-}
+};
 
 export default App;

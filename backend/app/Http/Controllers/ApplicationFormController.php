@@ -2,13 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppRegion;
-use App\Models\AppCity;
-use App\Models\AppBarangay;
-use App\Models\AppVillage;
-use App\Models\AppPlan;
-use App\Models\AppGroup;
-use App\Models\AppApplication;
+
+use App\Models\Application;
 use App\Services\TableCheckService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -60,10 +55,11 @@ class ApplicationFormController extends Controller
             'barangay' => 'required|string|max:255',
             'installationAddress' => 'required|string',
             'landmark' => 'required|string|max:255',
-            'nearestLandmark1' => 'required|string|max:255',
-            'nearestLandmark2' => 'required|string|max:255',
+            'referredBy' => 'nullable|string|max:255',
             'plan' => 'required|string|max:255',
             'promo' => 'nullable|string|max:255',
+            'nearestLandmark1Image' => 'required|file|mimes:jpeg,jpg,png|max:2048',
+            'nearestLandmark2Image' => 'required|file|mimes:jpeg,jpg,png|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -74,43 +70,29 @@ class ApplicationFormController extends Controller
         DB::beginTransaction();
         
         try {
-            // 1. Handle Region, City, Barangay, Village data
-            $regionId = $this->getOrCreateRegion($request->region);
-            $cityId = $this->getOrCreateCity($regionId, $request->city);
-            $barangayId = $this->getOrCreateBarangay($cityId, $request->barangay);
             
-            // 2. Handle Plan data
-            $planId = $this->getOrCreatePlan($request->plan);
-            
-            // 3. Create the APP_APPLICATIONS record
-            $application = new AppApplication();
-            $application->create_date = now()->format('Y-m-d');
-            $application->create_time = now()->format('H:i:s');
-            $application->email = $request->email;
-            $application->first_name = $request->firstName;
-            $application->middle_initial = $request->middleInitial;
-            $application->last_name = $request->lastName;
-            $application->mobile = $request->mobile;
-            $application->mobile_alt = $request->secondaryMobile;
-            $application->region_id = $regionId;
-            $application->city_id = $cityId;
-            $application->borough_id = $barangayId;
-            $application->address_line = $request->installationAddress;
-            $application->landmark = $request->landmark;
-            $application->nearest_landmark1 = $request->nearestLandmark1;
-            $application->nearest_landmark2 = $request->nearestLandmark2;
-            $application->plan_id = $planId;
-            // We store promo as a text field now, not a foreign key
-            $application->promo_id = null; // No longer using promo_id for foreign key
-            $application->primary_consent = true;
-            $application->primary_consent_at = now();
-            $application->source = 'Web Form';
-            $application->ip_address = $request->ip();
-            $application->user_agent = $request->header('User-Agent');
-            $application->status = 'pending';
+            // Create the application record
+            $application = new Application();
+            $application->Email_Address = $request->email;
+            $application->First_Name = $request->firstName;
+            $application->Middle_Initial = $request->middleInitial;
+            $application->Last_Name = $request->lastName;
+            $application->Mobile_Number = $request->mobile;
+            $application->Secondary_Mobile_Number = $request->secondaryMobile;
+            $application->Region = $request->region;
+            $application->City = $request->city;
+            $application->Barangay = $request->barangay;
+            $application->Installation_Address = $request->installationAddress;
+            $application->Landmark = $request->landmark;
+            $application->Referred_By = $request->referredBy;
+            $application->Desired_Plan = $request->plan;
+            $application->select_the_applicable_promo = $request->promo ?: 'None';
+            $application->Status = 'pending';
+            $application->Timestamp = now();
+            $application->I_agree_to_the_terms_and_conditions = true;
             $application->save();
 
-            // 4. Handle document uploads
+            // Handle document uploads
             $this->handleDocumentUploads($request, $application);
             
             DB::commit();
@@ -130,74 +112,22 @@ class ApplicationFormController extends Controller
         }
     }
 
-    /**
-     * Get or create a region
-     *
-     * @param string $regionName
-     * @return int
-     */
-    private function getOrCreateRegion($regionName)
-    {
-        $region = AppRegion::firstOrCreate(['name' => $regionName]);
-        return $region->id;
-    }
 
-    /**
-     * Get or create a city
-     *
-     * @param int $regionId
-     * @param string $cityName
-     * @return int
-     */
-    private function getOrCreateCity($regionId, $cityName)
-    {
-        $city = AppCity::firstOrCreate(
-            ['name' => $cityName, 'region_id' => $regionId]
-        );
-        return $city->id;
-    }
-
-    /**
-     * Get or create a barangay
-     *
-     * @param int $cityId
-     * @param string $barangayName
-     * @return int
-     */
-    private function getOrCreateBarangay($cityId, $barangayName)
-    {
-        $barangay = AppBarangay::firstOrCreate(
-            ['name' => $barangayName, 'city_id' => $cityId]
-        );
-        return $barangay->id;
-    }
-
-    /**
-     * Get or create a plan
-     *
-     * @param string $planName
-     * @return int
-     */
-    private function getOrCreatePlan($planName)
-    {
-        $plan = AppPlan::firstOrCreate(['name' => $planName]);
-        return $plan->id;
-    }
 
     /**
      * Handle uploading documents for an application
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\AppApplication  $application
+     * @param  \App\Models\Application  $application
      * @return void
      */
-    private function handleDocumentUploads(Request $request, AppApplication $application)
+    private function handleDocumentUploads(Request $request, Application $application)
     {
         $documentTypes = [
-            'proofOfBilling' => 'proof_of_billing',
-            'governmentIdPrimary' => 'gov_id_primary',
-            'governmentIdSecondary' => 'gov_id_secondary',
-            'houseFrontPicture' => 'house_front_pic',
+            'proofOfBilling' => 'Proof_of_Billing',
+            'governmentIdPrimary' => 'Government_Valid_ID',
+            'governmentIdSecondary' => '2nd_Government_Valid_ID',
+            'houseFrontPicture' => 'House_Front_Picture',
         ];
 
         foreach ($documentTypes as $requestKey => $dbField) {
@@ -233,8 +163,7 @@ class ApplicationFormController extends Controller
      */
     public function index()
     {
-        $applications = AppApplication::with(['region', 'city', 'barangay', 'plan'])
-            ->orderByRaw('create_date DESC, create_time DESC')
+        $applications = Application::orderBy('Timestamp', 'desc')
             ->paginate(10);
         
         return response()->json([
@@ -250,8 +179,7 @@ class ApplicationFormController extends Controller
      */
     public function show($id)
     {
-        $application = AppApplication::with(['region', 'city', 'barangay', 'village', 'plan', 'group'])
-            ->findOrFail($id);
+        $application = Application::findOrFail($id);
         
         return response()->json([
             'application' => $application
@@ -276,11 +204,13 @@ class ApplicationFormController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $application = AppApplication::findOrFail($id);
+        $application = Application::findOrFail($id);
         
-        $application->status = $request->status;
-        $application->update_date = now()->format('Y-m-d');
-        $application->update_time = now()->format('H:i:s');
+        $application->Status = $request->status;
+        if ($request->has('notes')) {
+            // Note: there's no 'notes' field in your table structure
+            // You might want to add one or handle notes differently
+        }
         
         $application->save();
         
