@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -13,9 +14,8 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('users', function (Blueprint $table) {
-            //
-        });
+        // Change Application_ID to VARCHAR to store 11-digit random numbers
+        DB::statement('ALTER TABLE application MODIFY Application_ID VARCHAR(11) NOT NULL PRIMARY KEY');
     }
 
     /**
@@ -25,8 +25,7 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('users', function (Blueprint $table) {
-            //
-        });
+        // Revert back to BIGINT if needed
+        DB::statement('ALTER TABLE application MODIFY Application_ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY');
     }
 };
