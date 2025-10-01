@@ -2,194 +2,206 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AppApplication;
-use App\Services\TableCheckService;
+use App\Models\Application;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ApplicationController extends Controller
 {
-    /**
-     * Process a new application
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function submitApplication(Request $request)
+    public function store(Request $request)
     {
-        // Ensure all required tables exist
-        $tableResults = TableCheckService::ensureAllRequiredTablesExist();
-        
-        // Check for any failures
-        $allTablesExist = !in_array(false, $tableResults, true);
-        
-        if (!$allTablesExist) {
-            Log::error('One or more required tables could not be created. Application submission failed.');
-            return response()->json([
-                'message' => 'Application submission failed due to database error.'
-            ], 500);
-        }
-        
-        // First check if the email already exists
-        $existingApplication = AppApplication::where('email', $request->email)->first();
-        
-        if ($existingApplication) {
-            // If this is testing, allow reusing the email
-            if (app()->environment('local', 'testing')) {
-                // Delete the application
-                $existingApplication->delete();
-                Log::info('Development environment: Deleted existing application to allow resubmission.');
-            } else {
-                // In production, return a more helpful message
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email|max:255',
+                'mobile' => 'required|string|regex:/^09[0-9]{9}$/',
+                'firstName' => 'required|string|max:255',
+                'lastName' => 'required|string|max:255',
+                'middleInitial' => 'nullable|string|max:1',
+                'secondaryMobile' => 'nullable|string|regex:/^09[0-9]{9}$/',
+                'region' => 'required|string|max:255',
+                'city' => 'required|string|max:255',
+                'barangay' => 'required|string|max:255',
+                'installationAddress' => 'required|string',
+                'landmark' => 'required|string|max:255',
+                'referredBy' => 'nullable|string|max:255',
+                'plan' => 'required|string|max:255',
+                'promo' => 'nullable|string|max:255',
+                'proofOfBilling' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'governmentIdSecondary' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+                'nearestLandmark1Image' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+                'nearestLandmark2Image' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+            ]);
+
+            if ($validator->fails()) {
                 return response()->json([
-                    'message' => 'An application with this email already exists',
-                    'errors' => [
-                        'email' => ['This email is already registered. Please use a different email or contact support.']
-                    ]
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
                 ], 422);
             }
-        }
-        
-        // Now we modify our validation rules
-        $emailRule = 'required|string|email|max:255';
-        
-        // Only add the unique constraint in production
-        if (!app()->environment('local', 'testing')) {
-            $emailRule .= '|unique:APP_APPLICATIONS';
-        }
-        
-        $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => $emailRule,
-            'password' => 'required|string|min:6|confirmed',  // Reduced min length
-            'phone_number' => 'required|string|max:20',
-            'address_line1' => 'required|string|max:255',
-            'city' => 'required|string',
-            'province' => 'required|string',
-            'postal_code' => 'nullable|string|max:20',
-            'application_status' => 'nullable|string',
-            'application_date' => 'nullable|date',
-            'is_applicant' => 'nullable',  // Can be a string 'true'/'false' now
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            $application = new Application();
+            
+            $application->timestamp = now();
+            $application->email_address = $request->email;
+            $application->mobile_number = $request->mobile;
+            $application->first_name = $request->firstName;
+            $application->last_name = $request->lastName;
+            $application->middle_initial = $request->middleInitial;
+            $application->secondary_mobile_number = $request->secondaryMobile;
+            $application->region = $request->region;
+            $application->city = $request->city;
+            $application->barangay = $request->barangay;
+            $application->installation_address = $request->installationAddress;
+            $application->landmark = $request->landmark;
+            $application->referred_by = $request->referredBy;
+            $application->desired_plan = $request->plan;
+            $application->promo = $request->promo ?? 'None';
+            $application->terms_agreed = true;
+            $application->status = 'pending';
+
+            if ($request->hasFile('proofOfBilling')) {
+                $path = $request->file('proofOfBilling')->store('applications/proof_of_billing', 'public');
+                $application->proof_of_billing_url = $path;
+            }
+
+            if ($request->hasFile('governmentIdPrimary')) {
+                $path = $request->file('governmentIdPrimary')->store('applications/government_ids', 'public');
+                $application->government_valid_id_url = $path;
+            }
+
+            if ($request->hasFile('governmentIdSecondary')) {
+                $path = $request->file('governmentIdSecondary')->store('applications/government_ids', 'public');
+                $application->second_government_valid_id_url = $path;
+            }
+
+            if ($request->hasFile('houseFrontPicture')) {
+                $path = $request->file('houseFrontPicture')->store('applications/house_pictures', 'public');
+                $application->house_front_picture_url = $path;
+            }
+
+            if ($request->hasFile('nearestLandmark1Image')) {
+                $path = $request->file('nearestLandmark1Image')->store('applications/landmarks', 'public');
+                $application->document_attachment_url = $path;
+            }
+
+            if ($request->hasFile('nearestLandmark2Image')) {
+                $path = $request->file('nearestLandmark2Image')->store('applications/landmarks', 'public');
+                $application->other_isp_bill_url = $path;
+            }
+
+            $application->save();
+
+            Log::info('Application submitted successfully', [
+                'application_id' => $application->id,
+                'email' => $application->email_address
+            ]);
+
+            return response()->json([
+                'message' => 'Application submitted successfully',
+                'application' => $application
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Application submission failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to submit application',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $application = new AppApplication();
-        $application->create_date = now()->format('Y-m-d');
-        $application->create_time = now()->format('H:i:s');
-        $application->email = $request->email;
-        $application->first_name = $request->first_name;
-        $application->middle_initial = $request->middle_name;
-        $application->last_name = $request->last_name;
-        $application->mobile = $request->phone_number;
-        $application->address_line = $request->address_line1;
-        $application->region_id = null; // Set appropriately if available
-        $application->city_id = null; // Set appropriately if available
-        $application->borough_id = null; // Set appropriately if available
-        $application->status = $request->application_status ?: 'pending';
-        $application->source = 'Web Form';
-        $application->ip_address = $request->ip();
-        $application->user_agent = $request->header('User-Agent');
-        $application->primary_consent = true;
-        $application->primary_consent_at = now();
-        $application->save();
-        
-        // No token creation since we're not using User model
-
-        return response()->json([
-            'message' => 'Application submitted successfully',
-            'application' => $application
-        ], 201);
     }
 
-    /**
-     * Get application information
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function getApplicationInfo(Request $request)
+    public function index(Request $request)
     {
-        $email = $request->input('email');
-        
-        if (!$email) {
+        try {
+            $status = $request->query('status');
+            
+            $query = Application::query();
+            
+            if ($status) {
+                $query->where('status', $status);
+            }
+            
+            $applications = $query->orderBy('created_at', 'desc')->paginate(15);
+            
             return response()->json([
-                'message' => 'Email is required'
-            ], 400);
+                'applications' => $applications
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve applications', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to retrieve applications',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        $application = AppApplication::where('email', $email)->first();
-        
-        if (!$application) {
+    }
+
+    public function show($id)
+    {
+        try {
+            $application = Application::findOrFail($id);
+            
             return response()->json([
-                'message' => 'Application not found'
+                'application' => $application
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Application not found', [
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Application not found',
+                'error' => $e->getMessage()
             ], 404);
         }
-        
-        return response()->json([
-            'application' => $application
-        ]);
     }
 
-    /**
-     * Update application status (admin only)
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function updateApplicationStatus(Request $request, $id)
+    public function updateStatus(Request $request, $id)
     {
-        // This should be protected by admin middleware in routes
-        $validator = Validator::make($request->all(), [
-            'status' => 'required|string|in:pending,approved,rejected',
-            'notes' => 'nullable|string',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|string|in:pending,approved,rejected',
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $application = Application::findOrFail($id);
+            $application->status = $request->status;
+            $application->save();
+
+            return response()->json([
+                'message' => 'Application status updated successfully',
+                'application' => $application
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to update application status', [
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to update application status',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $application = AppApplication::findOrFail($id);
-        
-        $application->status = $request->status;
-        $application->update_date = now()->format('Y-m-d');
-        $application->update_time = now()->format('H:i:s');
-        $application->save();
-        
-        return response()->json([
-            'message' => 'Application status updated',
-            'application' => $application
-        ]);
-    }
-
-    /**
-     * Get all applications (admin only)
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function getAllApplications(Request $request)
-    {
-        // This should be protected by admin middleware in routes
-        $status = $request->query('status');
-        
-        $query = AppApplication::query();
-        
-        if ($status) {
-            $query->where('status', $status);
-        }
-        
-        $applications = $query->with(['region', 'city', 'barangay', 'village', 'plan'])->paginate(10);
-        
-        return response()->json([
-            'applications' => $applications
-        ]);
     }
 }

@@ -9,143 +9,72 @@ class Application extends Model
 {
     use HasFactory;
 
-    protected $table = 'application';
-    protected $primaryKey = 'Application_ID';
+    protected $table = 'applications';
     
-    // Disable auto-incrementing since we'll generate random IDs
-    public $incrementing = false;
+    public $timestamps = true;
     
-    // Set the primary key type
-    protected $keyType = 'int';
-    
-    // Disable Laravel's automatic timestamp handling since we use custom timestamp field
-    public $timestamps = false;
+    const CREATED_AT = 'created_at';
+    const UPDATED_AT = 'updated_at';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
-        // Primary Key (now manually set)
-        'Application_ID',
-        // Contact Information (using actual database column names)
-        'Email_Address',
-        'Mobile_Number',
-        'First_Name',
-        'Last_Name',
-        'Middle_Initial',
-        'Secondary_Mobile_Number',
-        
-        // Location Information
-        'Region',
-        'City',
-        'Barangay',
-        'Installation_Address',
-        'Landmark',
-        'Referred_by',
-        
-        // Plan Selection
-        'Desired_Plan',
-        'Select_the_applicable_promo',
-        
-        // Document File Paths
-        'Proof_of_Billing',
-        'Government_Valid_ID',
-        '2nd_Government_Valid_ID',
-        'House_Front_Picture',
-        'First_Nearest_landmark',
-        'Second_Nearest_landmark',
-        
-        // Additional fields
-        'I_agree_to_the_terms_and_conditions',
-        'Attach_the_picture_of_your_document',
-        'Attach_SOA_from_other_provider',
-        'Referrers_Account_Number',
-        'Applying_for',
-        'Status',
-        'Visit_By',
-        'Visit_With',
-        'Visit_With_Other',
-        'Remarks',
-        'Modified_By',
-        'Modified_Date',
-        'User_Email',
+        'timestamp',
+        'email_address',
+        'first_name',
+        'middle_initial',
+        'last_name',
+        'mobile_number',
+        'secondary_mobile_number',
+        'installation_address',
+        'landmark',
+        'region',
+        'city',
+        'barangay',
+        'village',
+        'desired_plan',
+        'promo',
+        'referrer_account_id',
+        'referred_by',
+        'proof_of_billing_url',
+        'government_valid_id_url',
+        'second_government_valid_id_url',
+        'house_front_picture_url',
+        'document_attachment_url',
+        'other_isp_bill_url',
+        'terms_agreed',
+        'status',
+        'created_by_user_id',
+        'updated_by_user_id',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
-        'Modified_Date' => 'datetime',
-        'Timestamp' => 'datetime',
-        'I_agree_to_the_terms_and_conditions' => 'boolean',
+        'terms_agreed' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'timestamp' => 'datetime',
     ];
 
-    /**
-     * Get the application status with color coding.
-     *
-     * @return string
-     */
-    public function getStatusColorAttribute()
-    {
-        return match($this->Status) {
-            'pending' => 'yellow',
-            'approved' => 'green',
-            'rejected' => 'red',
-            'processing' => 'blue',
-            default => 'gray'
-        };
-    }
+    protected $attributes = [
+        'status' => 'pending',
+        'terms_agreed' => false,
+    ];
 
-    /**
-     * Scope to filter applications by status.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param string $status
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
     public function scopeByStatus($query, $status)
     {
-        return $query->where('Status', $status);
+        return $query->where('status', $status);
     }
 
-    /**
-     * Get pending applications.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
     public function scopePending($query)
     {
-        return $query->where('Status', 'pending');
+        return $query->where('status', 'pending');
     }
 
-    /**
-     * Get approved applications.
-     *
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
     public function scopeApproved($query)
     {
-        return $query->where('Status', 'approved');
+        return $query->where('status', 'approved');
     }
 
-    /**
-     * Generate a unique random 7-digit Application_ID
-     *
-     * @return int
-     */
-    public static function generateUniqueApplicationId()
+    public function scopeRejected($query)
     {
-        do {
-            // Generate random 7-digit number (1000000 to 9999999)
-            $applicationId = mt_rand(1000000, 9999999);
-        } while (static::where('Application_ID', $applicationId)->exists());
-        
-        return $applicationId;
+        return $query->where('status', 'rejected');
     }
 }
