@@ -12,9 +12,6 @@ class Application extends Model
     protected $table = 'applications';
     
     public $timestamps = true;
-    
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
 
     protected $fillable = [
         'timestamp',
@@ -32,30 +29,28 @@ class Application extends Model
         'village',
         'desired_plan',
         'promo',
-        'referrer_account_id',
         'referred_by',
-        'proof_of_billing_url',
-        'government_valid_id_url',
-        'second_government_valid_id_url',
-        'house_front_picture_url',
-        'document_attachment_url',
-        'other_isp_bill_url',
+        'proof_of_billing',
+        'government_valid_id',
+        'second_government_valid_id',
+        'house_front_picture',
+        'first_nearest_landmark',
+        'second_nearest_landmark',
         'terms_agreed',
         'status',
-        'created_by_user_id',
-        'updated_by_user_id',
     ];
 
     protected $casts = [
         'terms_agreed' => 'boolean',
+        'timestamp' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'timestamp' => 'datetime',
     ];
 
     protected $attributes = [
         'status' => 'pending',
         'terms_agreed' => false,
+        'promo' => 'None',
     ];
 
     public function scopeByStatus($query, $status)

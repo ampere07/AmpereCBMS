@@ -65,32 +65,32 @@ class ApplicationController extends Controller
 
             if ($request->hasFile('proofOfBilling')) {
                 $path = $request->file('proofOfBilling')->store('applications/proof_of_billing', 'public');
-                $application->proof_of_billing_url = $path;
+                $application->proof_of_billing = $path;
             }
 
             if ($request->hasFile('governmentIdPrimary')) {
                 $path = $request->file('governmentIdPrimary')->store('applications/government_ids', 'public');
-                $application->government_valid_id_url = $path;
+                $application->government_valid_id = $path;
             }
 
             if ($request->hasFile('governmentIdSecondary')) {
                 $path = $request->file('governmentIdSecondary')->store('applications/government_ids', 'public');
-                $application->second_government_valid_id_url = $path;
+                $application->second_government_valid_id = $path;
             }
 
             if ($request->hasFile('houseFrontPicture')) {
                 $path = $request->file('houseFrontPicture')->store('applications/house_pictures', 'public');
-                $application->house_front_picture_url = $path;
+                $application->house_front_picture = $path;
             }
 
             if ($request->hasFile('nearestLandmark1Image')) {
                 $path = $request->file('nearestLandmark1Image')->store('applications/landmarks', 'public');
-                $application->document_attachment_url = $path;
+                $application->first_nearest_landmark = $path;
             }
 
             if ($request->hasFile('nearestLandmark2Image')) {
                 $path = $request->file('nearestLandmark2Image')->store('applications/landmarks', 'public');
-                $application->other_isp_bill_url = $path;
+                $application->second_nearest_landmark = $path;
             }
 
             $application->save();
@@ -129,7 +129,7 @@ class ApplicationController extends Controller
                 $query->where('status', $status);
             }
             
-            $applications = $query->orderBy('created_at', 'desc')->paginate(15);
+            $applications = $query->orderBy('created_at', 'desc')->get();
             
             return response()->json([
                 'applications' => $applications
