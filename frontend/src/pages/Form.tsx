@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_CONFIG from '../config/api';
 
 interface Region {
   id: number;
@@ -52,14 +53,21 @@ interface FormState {
   privacyAgreement: boolean;
 }
 
+interface Promo {
+  id: number;
+  name: string;
+  status: string;
+}
+
 const Form: React.FC = () => {
-  const apiBaseUrl = 'http://localhost:8000';
+  const apiBaseUrl = "http://127.0.0.1:8000";
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [promos, setPromos] = useState<Promo[]>([]);
 
   const [formData, setFormData] = useState<FormState>({
     email: '',
@@ -85,42 +93,44 @@ const Form: React.FC = () => {
     houseFrontPicture: null,
     privacyAgreement: false
   });
+  
 
-  useEffect(() => {
-    const fetchRegions = async () => {
-      try {
-        const response = await fetch(`${apiBaseUrl}/api/regions`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch regions');
-        }
-        const data = await response.json();
-        setRegions(data.regions || []);
-      } catch (error) {
-        console.error('Error fetching regions:', error);
-        setRegions([]);
+useEffect(() => {
+  const fetchRegions = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/region`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch region');
       }
-    };
+      const data = await response.json();
+      setRegions(data.regions || []);
+    } catch (error) {
+      console.error('Error fetching regions:', error);
+      setRegions([]);
+    }
+  };
 
-    fetchRegions();
-  }, []);
+  fetchRegions();
+}, []);
 
-  useEffect(() => {
-    const fetchPlans = async () => {
-      try {
-        const response = await fetch(`${apiBaseUrl}/api/plans`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch plans');
-        }
-        const data = await response.json();
-        setPlans(data.data || []);
-      } catch (error) {
-        console.error('Error fetching plans:', error);
-        setPlans([]);
+useEffect(() => {
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/plans`); // ✅ FIXED HERE
+      if (!response.ok) {
+        throw new Error('Failed to fetch plans');
       }
-    };
+      const data = await response.json();
+      setPlans(data.data || []);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      setPlans([]);
+    }
+  };
 
-    fetchPlans();
-  }, []);
+  fetchPlans();
+}, []);
+
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -150,6 +160,26 @@ const Form: React.FC = () => {
 
     fetchCities();
   }, [formData.region]);
+
+  useEffect(() => {
+  const fetchPromos = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/promo_list`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch promos');
+      }
+      const data = await response.json();
+      setPromos(data.data || []); // adjust if your Laravel controller returns differently
+    } catch (error) {
+      console.error('Error fetching promos:', error);
+      setPromos([]);
+    }
+  };
+
+  fetchPromos();
+}, []);
+
 
   useEffect(() => {
     const fetchBarangays = async () => {
@@ -261,8 +291,8 @@ const Form: React.FC = () => {
     submissionData.append('referredBy', formData.referredBy);
     
     // Add plan information
-    submissionData.append('plan', formData.plan);
-    submissionData.append('promo', formData.promo);
+    submissionData.append('desired_plan_id', formData.plan);
+    submissionData.append('promo_id', formData.promo || '');
     
     // Also append document files directly to the application submission
     // This way they are stored in the correct fields in the database
@@ -684,9 +714,10 @@ const Form: React.FC = () => {
                 >
                   <option value="">Select plan</option>
                   {plans && plans.length > 0 && plans.map(plan => (
-                    <option key={plan.id} value={plan.plan_name}>
-                      {plan.plan_name} - ₱{plan.price.toLocaleString()}
-                    </option>
+                    <option key={plan.id} value={plan.id}>
+  {plan.plan_name} - ₱{plan.price.toLocaleString()}
+</option>
+
                   ))}
                 </select>
               </div>
@@ -702,10 +733,14 @@ const Form: React.FC = () => {
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="None">None</option>
-                  <option value="3MonthsFree">3 Months Free</option>
-                  <option value="HalfOff">50% Off First Month</option>
-                  <option value="FreeInstallation">Free Installation</option>
+                  <option value="">None</option>
+{promos && promos.length > 0 && promos
+  .filter(promo => promo.status === 'active')
+  .map(promo => (
+    <option key={promo.id} value={promo.id}>
+      {promo.name}
+    </option>
+))}
                 </select>
               </div>
             </div>

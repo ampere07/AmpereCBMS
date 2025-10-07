@@ -12,20 +12,19 @@ class GeographicController extends Controller
     {
         try {
             $regions = DB::table('region')
-                ->select('id', 'region as region_name')
+                ->select('id', 'region')
                 ->orderBy('region', 'asc')
                 ->get();
 
             return response()->json([
-                'regions' => $regions->map(function($region) {
+                'regions' => $regions->map(function ($region) {
                     return [
                         'id' => $region->id,
-                        'region_code' => (string)$region->id,
-                        'region_name' => $region->region_name
+                        'region_code' => (string)$region->id, // ✅ use id as code
+                        'region_name' => $region->region      // ✅ match your DB column
                     ];
                 })
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to retrieve regions', [
                 'error' => $e->getMessage()
@@ -50,21 +49,20 @@ class GeographicController extends Controller
             }
 
             $cities = DB::table('city')
-                ->select('id', 'city as city_name')
+                ->select('id', 'city')
                 ->where('region_id', $regionCode)
                 ->orderBy('city', 'asc')
                 ->get();
 
             return response()->json([
-                'cities' => $cities->map(function($city) {
+                'cities' => $cities->map(function ($city) {
                     return [
                         'id' => $city->id,
                         'city_code' => (string)$city->id,
-                        'city_name' => $city->city_name
+                        'city_name' => $city->city
                     ];
                 })
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to retrieve cities', [
                 'error' => $e->getMessage()
@@ -89,21 +87,20 @@ class GeographicController extends Controller
             }
 
             $barangays = DB::table('barangay')
-                ->select('id', 'barangay as barangay_name')
+                ->select('id', 'barangay')
                 ->where('city_id', $cityCode)
                 ->orderBy('barangay', 'asc')
                 ->get();
 
             return response()->json([
-                'barangays' => $barangays->map(function($barangay) {
+                'barangays' => $barangays->map(function ($barangay) {
                     return [
                         'id' => $barangay->id,
                         'barangay_code' => (string)$barangay->id,
-                        'barangay_name' => $barangay->barangay_name
+                        'barangay_name' => $barangay->barangay
                     ];
                 })
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to retrieve barangays', [
                 'error' => $e->getMessage()

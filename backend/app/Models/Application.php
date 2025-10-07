@@ -27,8 +27,8 @@ class Application extends Model
         'city',
         'barangay',
         'village',
-        'desired_plan',
-        'promo',
+        'plan_list',
+        'promo_id',
         'referred_by',
         'proof_of_billing',
         'government_valid_id',
@@ -50,7 +50,7 @@ class Application extends Model
     protected $attributes = [
         'status' => 'pending',
         'terms_agreed' => false,
-        'promo' => 'None',
+        'promo_id' => 'None',
     ];
 
     public function scopeByStatus($query, $status)

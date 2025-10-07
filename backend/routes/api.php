@@ -6,6 +6,7 @@ use App\Http\Controllers\PlanController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Http\Controllers\PromoController;
 
 Route::post('/application/store', [ApplicationController::class, 'store']);
 
@@ -28,6 +29,8 @@ Route::get('/plans/{id}', [PlanController::class, 'show']);
 Route::post('/plans', [PlanController::class, 'store']);
 Route::put('/plans/{id}', [PlanController::class, 'update']);
 Route::delete('/plans/{id}', [PlanController::class, 'destroy']);
+
+Route::get('/promo_list', [PromoController::class, 'index']);
 
 Route::get('/debug/tables', function () {
     try {

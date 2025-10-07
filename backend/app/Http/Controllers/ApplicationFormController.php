@@ -83,7 +83,7 @@ class ApplicationFormController extends Controller
                 'Installation_Address' => $request->installationAddress,
                 'Landmark' => $request->landmark,
                 'Referred_by' => $request->referredBy,
-                'Desired_Plan' => $request->plan,
+                'desired_plan_id' => $request->plan,
                 'Select_the_applicable_promo' => $request->promo ?? 'None',
                 'Status' => 'pending',
                 'I_agree_to_the_terms_and_conditions' => true,
