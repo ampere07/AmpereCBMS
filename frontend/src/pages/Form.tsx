@@ -1,225 +1,32 @@
 import React, { useState, useEffect } from 'react';
+import API_CONFIG from '../config/api';
 
-// Geographic data interfaces
-interface RegionData {
-  id: string;
-  name: string;
+interface Region {
+  id: number;
+  region_code: string;
+  region_name: string;
 }
 
-interface CitiesData {
-  [key: string]: RegionData[];
+interface City {
+  id: number;
+  city_code: string;
+  city_name: string;
 }
 
-interface BarangaysData {
-  [key: string]: RegionData[];
+interface Barangay {
+  id: number;
+  barangay_code: string;
+  barangay_name: string;
 }
 
-interface LocationsData {
-  [key: string]: RegionData[];
+interface Plan {
+  id: number;
+  plan_name: string;
+  description?: string;
+  price: number;
 }
 
-interface GeographicDataType {
-  regions: RegionData[];
-  cities: CitiesData;
-  barangays: BarangaysData;
-  locations: LocationsData;
-}
 
-// Geographic data for dropdowns
-const geographicData: GeographicDataType = {
-  regions: [
-    { id: 'NCR', name: 'National Capital Region (NCR)' },
-    { id: 'CAR', name: 'Cordillera Administrative Region (CAR)' },
-    { id: 'R1', name: 'Region 1 - Ilocos Region' },
-    { id: 'R2', name: 'Region 2 - Cagayan Valley' },
-    { id: 'R3', name: 'Region 3 - Central Luzon' },
-    { id: 'R4A', name: 'Region 4A - CALABARZON' },
-    { id: 'R4B', name: 'Region 4B - MIMAROPA' },
-    { id: 'R5', name: 'Region 5 - Bicol Region' },
-    { id: 'R6', name: 'Region 6 - Western Visayas' },
-    { id: 'R7', name: 'Region 7 - Central Visayas' },
-    { id: 'R8', name: 'Region 8 - Eastern Visayas' },
-    { id: 'R9', name: 'Region 9 - Zamboanga Peninsula' },
-    { id: 'R10', name: 'Region 10 - Northern Mindanao' },
-    { id: 'R11', name: 'Region 11 - Davao Region' },
-    { id: 'R12', name: 'Region 12 - SOCCSKSARGEN' },
-    { id: 'R13', name: 'Region 13 - Caraga' },
-    { id: 'BARMM', name: 'Bangsamoro Autonomous Region in Muslim Mindanao' },
-  ],
-  cities: {
-    'NCR': [
-      { id: 'manila', name: 'Manila' },
-      { id: 'quezon', name: 'Quezon City' },
-      { id: 'makati', name: 'Makati' },
-      { id: 'pasig', name: 'Pasig' },
-      { id: 'taguig', name: 'Taguig' },
-      { id: 'pasay', name: 'Pasay' },
-      { id: 'caloocan', name: 'Caloocan' },
-    ],
-    'CAR': [
-      { id: 'baguio', name: 'Baguio City' },
-      { id: 'la_trinidad', name: 'La Trinidad' },
-      { id: 'bangued', name: 'Bangued' },
-      { id: 'tabuk', name: 'Tabuk' },
-    ],
-    'R1': [
-      { id: 'san_fernando_lu', name: 'San Fernando City, La Union' },
-      { id: 'laoag', name: 'Laoag City' },
-      { id: 'dagupan', name: 'Dagupan City' },
-      { id: 'vigan', name: 'Vigan City' },
-    ],
-    'R2': [
-      { id: 'tuguegarao', name: 'Tuguegarao City' },
-      { id: 'ilagan', name: 'Ilagan City' },
-      { id: 'cauayan', name: 'Cauayan City' },
-      { id: 'santiago', name: 'Santiago City' },
-    ],
-    'R3': [
-      { id: 'san_fernando_p', name: 'San Fernando City, Pampanga' },
-      { id: 'angeles', name: 'Angeles City' },
-      { id: 'olongapo', name: 'Olongapo City' },
-      { id: 'malolos', name: 'Malolos City' },
-    ],
-    'R4A': [
-      { id: 'calamba', name: 'Calamba City' },
-      { id: 'batangas', name: 'Batangas City' },
-      { id: 'lipa', name: 'Lipa City' },
-      { id: 'antipolo', name: 'Antipolo City' },
-    ],
-    'R4B': [
-      { id: 'calapan', name: 'Calapan City' },
-      { id: 'puerto_princesa', name: 'Puerto Princesa City' },
-    ],
-    'R5': [
-      { id: 'legazpi', name: 'Legazpi City' },
-      { id: 'naga', name: 'Naga City' },
-      { id: 'sorsogon', name: 'Sorsogon City' },
-    ],
-    'R6': [
-      { id: 'iloilo', name: 'Iloilo City' },
-      { id: 'bacolod', name: 'Bacolod City' },
-      { id: 'roxas', name: 'Roxas City' },
-    ],
-    'R7': [
-      { id: 'cebu', name: 'Cebu City' },
-      { id: 'lapu_lapu', name: 'Lapu-Lapu City' },
-      { id: 'mandaue', name: 'Mandaue City' },
-      { id: 'tagbilaran', name: 'Tagbilaran City' },
-    ],
-    'R8': [
-      { id: 'tacloban', name: 'Tacloban City' },
-      { id: 'ormoc', name: 'Ormoc City' },
-      { id: 'catbalogan', name: 'Catbalogan City' },
-    ],
-    'R9': [
-      { id: 'zamboanga', name: 'Zamboanga City' },
-      { id: 'dipolog', name: 'Dipolog City' },
-      { id: 'pagadian', name: 'Pagadian City' },
-    ],
-    'R10': [
-      { id: 'cagayan_de_oro', name: 'Cagayan de Oro City' },
-      { id: 'iligan', name: 'Iligan City' },
-      { id: 'valencia', name: 'Valencia City' },
-    ],
-    'R11': [
-      { id: 'davao', name: 'Davao City' },
-      { id: 'tagum', name: 'Tagum City' },
-      { id: 'digos', name: 'Digos City' },
-    ],
-    'R12': [
-      { id: 'general_santos', name: 'General Santos City' },
-      { id: 'koronadal', name: 'Koronadal City' },
-      { id: 'cotabato', name: 'Cotabato City' },
-    ],
-    'R13': [
-      { id: 'butuan', name: 'Butuan City' },
-      { id: 'surigao', name: 'Surigao City' },
-      { id: 'tandag', name: 'Tandag City' },
-    ],
-    'BARMM': [
-      { id: 'marawi', name: 'Marawi City' },
-      { id: 'lamitan', name: 'Lamitan City' },
-    ],
-  },
-  barangays: {
-    // Example for Manila
-    'manila': [
-      { id: 'binondo', name: 'Binondo' },
-      { id: 'ermita', name: 'Ermita' },
-      { id: 'intramuros', name: 'Intramuros' },
-      { id: 'malate', name: 'Malate' },
-      { id: 'quiapo', name: 'Quiapo' },
-      { id: 'sampaloc', name: 'Sampaloc' },
-      { id: 'san_andres', name: 'San Andres' },
-      { id: 'san_miguel', name: 'San Miguel' },
-      { id: 'san_nicolas', name: 'San Nicolas' },
-      { id: 'santa_ana', name: 'Santa Ana' },
-      { id: 'santa_cruz', name: 'Santa Cruz' },
-      { id: 'tondo', name: 'Tondo' },
-    ],
-    // Example for Quezon City
-    'quezon': [
-      { id: 'bahay_toro', name: 'Bahay Toro' },
-      { id: 'batasan_hills', name: 'Batasan Hills' },
-      { id: 'commonwealth', name: 'Commonwealth' },
-      { id: 'fairview', name: 'Fairview' },
-      { id: 'holy_spirit', name: 'Holy Spirit' },
-      { id: 'kamuning', name: 'Kamuning' },
-      { id: 'new_era', name: 'New Era' },
-      { id: 'novaliches', name: 'Novaliches' },
-      { id: 'tandang_sora', name: 'Tandang Sora' },
-      { id: 'cubao', name: 'Cubao' },
-      { id: 'diliman', name: 'Diliman' },
-      { id: 'loyola_heights', name: 'Loyola Heights' },
-    ],
-    // Add barangays for Iligan City
-    'iligan': [
-      { id: 'acmac', name: 'Acmac' },
-      { id: 'bagong_silang', name: 'Bagong Silang' },
-      { id: 'bonbonon', name: 'Bonbonon' },
-      { id: 'buruun', name: 'Buruun' },
-      { id: 'digkilaan', name: 'Digkilaan' },
-      { id: 'hinaplanon', name: 'Hinaplanon' },
-      { id: 'mainit', name: 'Mainit' },
-      { id: 'mandulog', name: 'Mandulog' },
-      { id: 'pala-o', name: 'Pala-o' },
-      { id: 'poblacion', name: 'Poblacion' },
-      { id: 'santa_elena', name: 'Santa Elena' },
-      { id: 'santiago', name: 'Santiago' },
-      { id: 'suarez', name: 'Suarez' },
-      { id: 'tambacan', name: 'Tambacan' },
-      { id: 'tipanoy', name: 'Tipanoy' },
-      { id: 'tubod', name: 'Tubod' },
-      { id: 'upper_hinaplanon', name: 'Upper Hinaplanon' },
-    ],
-    // Add barangays for other cities as needed
-  },
-  locations: {
-    // Sample locations for some barangays in Manila
-    'binondo': [
-      { id: 'divisoria', name: 'Divisoria Area' },
-      { id: 'juan_luna', name: 'Juan Luna Street' },
-      { id: 'binondo_church', name: 'Binondo Church Area' },
-    ],
-    'ermita': [
-      { id: 'roxas_blvd', name: 'Roxas Boulevard' },
-      { id: 'pedro_gil', name: 'Pedro Gil Area' },
-      { id: 'manila_bay', name: 'Manila Bay Area' },
-    ],
-    // Sample locations for some barangays in Quezon City
-    'diliman': [
-      { id: 'up_campus', name: 'UP Campus' },
-      { id: 'philcoa', name: 'Philcoa' },
-      { id: 'teachers_village', name: 'Teachers Village' },
-    ],
-    'cubao': [
-      { id: 'araneta_center', name: 'Araneta Center' },
-      { id: 'gateway_mall', name: 'Gateway Mall Area' },
-      { id: 'ali_mall', name: 'Ali Mall Area' },
-    ],
-    // Add more locations as needed
-  }
-};
 
 interface FormState {
   email: string;
@@ -246,8 +53,21 @@ interface FormState {
   privacyAgreement: boolean;
 }
 
+interface Promo {
+  id: number;
+  name: string;
+  status: string;
+}
+
 const Form: React.FC = () => {
+  const apiBaseUrl = "http://127.0.0.1:8000";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [barangays, setBarangays] = useState<Barangay[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [promos, setPromos] = useState<Promo[]>([]);
 
   const [formData, setFormData] = useState<FormState>({
     email: '',
@@ -273,75 +93,151 @@ const Form: React.FC = () => {
     houseFrontPicture: null,
     privacyAgreement: false
   });
+  
 
-  // State for available dropdown options
-  const [availableCities, setAvailableCities] = useState<Array<{ id: string, name: string }>>([]);
-  const [availableBarangays, setAvailableBarangays] = useState<Array<{ id: string, name: string }>>([]);
-
-  // Update city options when region changes
-  useEffect(() => {
-    if (formData.region && formData.region in geographicData.cities) {
-      setAvailableCities(geographicData.cities[formData.region]);
-      // Reset dependent fields
-      setFormData(prev => ({
-        ...prev,
-        city: '',
-        barangay: '',
-        location: ''
-      }));
-      setAvailableBarangays([]);
-    } else {
-      setAvailableCities([]);
+useEffect(() => {
+  const fetchRegions = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/region`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch region');
+      }
+      const data = await response.json();
+      setRegions(data.regions || []);
+    } catch (error) {
+      console.error('Error fetching regions:', error);
+      setRegions([]);
     }
+  };
+
+  fetchRegions();
+}, []);
+
+useEffect(() => {
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/plans`); // ✅ FIXED HERE
+      if (!response.ok) {
+        throw new Error('Failed to fetch plans');
+      }
+      const data = await response.json();
+      setPlans(data.data || []);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      setPlans([]);
+    }
+  };
+
+  fetchPlans();
+}, []);
+
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      if (formData.region) {
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/cities?region_code=${formData.region}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch cities');
+          }
+          const data = await response.json();
+          setCities(data.cities || []);
+          setFormData(prev => ({
+            ...prev,
+            city: '',
+            barangay: '',
+            location: ''
+          }));
+          setBarangays([]);
+        } catch (error) {
+          console.error('Error fetching cities:', error);
+          setCities([]);
+        }
+      } else {
+        setCities([]);
+      }
+    };
+
+    fetchCities();
   }, [formData.region]);
 
-  // Update barangay options when city changes
   useEffect(() => {
-    if (formData.city && formData.city in geographicData.barangays) {
-      setAvailableBarangays(geographicData.barangays[formData.city]);
-      // Reset dependent fields
-      setFormData(prev => ({
-        ...prev,
-        barangay: '',
-        location: ''
-      }));
-    } else {
-      setAvailableBarangays([]);
+  const fetchPromos = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/promo_list`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch promos');
+      }
+      const data = await response.json();
+      setPromos(data.data || []); // adjust if your Laravel controller returns differently
+    } catch (error) {
+      console.error('Error fetching promos:', error);
+      setPromos([]);
     }
+  };
+
+  fetchPromos();
+}, []);
+
+
+  useEffect(() => {
+    const fetchBarangays = async () => {
+      if (formData.city) {
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/barangays?city_code=${formData.city}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch barangays');
+          }
+          const data = await response.json();
+          setBarangays(data.barangays || []);
+          setFormData(prev => ({
+            ...prev,
+            barangay: '',
+            location: ''
+          }));
+        } catch (error) {
+          console.error('Error fetching barangays:', error);
+          setBarangays([]);
+        }
+      } else {
+        setBarangays([]);
+      }
+    };
+
+    fetchBarangays();
   }, [formData.city]);
 
   // Track full location text
   const [fullLocationText, setFullLocationText] = useState<string>('');
 
-  // Update full location when region, city, or barangay changes
   useEffect(() => {
-    const selectedRegion = geographicData.regions.find(r => r.id === formData.region);
-    const selectedCity = availableCities.find(c => c.id === formData.city);
-    const selectedBarangay = availableBarangays.find(b => b.id === formData.barangay);
+    const selectedRegion = regions.find(r => r.region_code === formData.region);
+    const selectedCity = cities.find(c => c.city_code === formData.city);
+    const selectedBarangay = barangays.find(b => b.barangay_code === formData.barangay);
     
     let locationText = '';
     
     if (selectedRegion) {
-      locationText += selectedRegion.name;
+      locationText += selectedRegion.region_name;
       
       if (selectedCity) {
-        locationText += ', ' + selectedCity.name;
+        locationText += ', ' + selectedCity.city_name;
         
         if (selectedBarangay) {
-          locationText += ', ' + selectedBarangay.name;
+          locationText += ', ' + selectedBarangay.barangay_name;
         }
       }
     }
     
     setFullLocationText(locationText);
-    // Update the location field in formData
     if (locationText) {
       setFormData(prev => ({
         ...prev,
         location: locationText
       }));
     }
-  }, [formData.region, formData.city, formData.barangay, availableCities, availableBarangays]);
+  }, [formData.region, formData.city, formData.barangay, regions, cities, barangays]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -383,11 +279,9 @@ const Form: React.FC = () => {
     submissionData.append('mobile', formData.mobile);
     submissionData.append('secondaryMobile', formData.secondaryMobile || '');
     
-    // Add location information
-    // Convert ID-based selection to name for storing
-    const selectedRegion = formData.region ? geographicData.regions.find(r => r.id === formData.region)?.name || '' : '';
-    const selectedCity = formData.city ? availableCities.find(c => c.id === formData.city)?.name || '' : '';
-    const selectedBarangay = formData.barangay ? availableBarangays.find(b => b.id === formData.barangay)?.name || '' : '';
+    const selectedRegion = formData.region ? regions.find(r => r.region_code === formData.region)?.region_name || '' : '';
+    const selectedCity = formData.city ? cities.find(c => c.city_code === formData.city)?.city_name || '' : '';
+    const selectedBarangay = formData.barangay ? barangays.find(b => b.barangay_code === formData.barangay)?.barangay_name || '' : '';
     
     submissionData.append('region', selectedRegion);
     submissionData.append('city', selectedCity);
@@ -397,8 +291,8 @@ const Form: React.FC = () => {
     submissionData.append('referredBy', formData.referredBy);
     
     // Add plan information
-    submissionData.append('plan', formData.plan);
-    submissionData.append('promo', formData.promo);
+    submissionData.append('desired_plan_id', formData.plan);
+    submissionData.append('promo_id', formData.promo || '');
     
     // Also append document files directly to the application submission
     // This way they are stored in the correct fields in the database
@@ -429,8 +323,7 @@ const Form: React.FC = () => {
     try {
       setIsSubmitting(true);
       
-      // First submit the application form
-      const apiBaseUrl = 'http://127.0.0.1:8000'; // Updated to match backend server port
+
       
       // No need for CSRF token with the updated API
       
@@ -642,8 +535,8 @@ const Form: React.FC = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">Select region</option>
-                  {geographicData.regions.map(region => (
-                    <option key={region.id} value={region.id}>{region.name}</option>
+                  {regions && regions.length > 0 && regions.map(region => (
+                    <option key={region.id} value={region.region_code}>{region.region_name}</option>
                   ))}
                 </select>
               </div>
@@ -662,8 +555,8 @@ const Form: React.FC = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="">Select city/municipality</option>
-                  {availableCities.map(city => (
-                    <option key={city.id} value={city.id}>{city.name}</option>
+                  {cities && cities.length > 0 && cities.map(city => (
+                    <option key={city.id} value={city.city_code}>{city.city_name}</option>
                   ))}
                 </select>
               </div>
@@ -682,8 +575,8 @@ const Form: React.FC = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="">Select barangay</option>
-                  {availableBarangays.map(barangay => (
-                    <option key={barangay.id} value={barangay.id}>{barangay.name}</option>
+                  {barangays && barangays.length > 0 && barangays.map(barangay => (
+                    <option key={barangay.id} value={barangay.barangay_code}>{barangay.barangay_name}</option>
                   ))}
                 </select>
               </div>
@@ -820,10 +713,12 @@ const Form: React.FC = () => {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">Select plan</option>
-                  <option value="Basic Plan - 20 Mbps">Basic Plan - 20 Mbps</option>
-                  <option value="Standard Plan - 50 Mbps">Standard Plan - 50 Mbps</option>
-                  <option value="Premium Plan - 100 Mbps">Premium Plan - 100 Mbps</option>
-                  <option value="Business Plan - 200 Mbps">Business Plan - 200 Mbps</option>
+                  {plans && plans.length > 0 && plans.map(plan => (
+                    <option key={plan.id} value={plan.id}>
+  {plan.plan_name} - ₱{plan.price.toLocaleString()}
+</option>
+
+                  ))}
                 </select>
               </div>
               
@@ -838,10 +733,14 @@ const Form: React.FC = () => {
                   onChange={handleInputChange}
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="None">None</option>
-                  <option value="3MonthsFree">3 Months Free</option>
-                  <option value="HalfOff">50% Off First Month</option>
-                  <option value="FreeInstallation">Free Installation</option>
+                  <option value="">None</option>
+{promos && promos.length > 0 && promos
+  .filter(promo => promo.status === 'active')
+  .map(promo => (
+    <option key={promo.id} value={promo.id}>
+      {promo.name}
+    </option>
+))}
                 </select>
               </div>
             </div>

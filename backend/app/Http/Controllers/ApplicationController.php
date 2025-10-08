@@ -26,7 +26,7 @@ class ApplicationController extends Controller
                 'installationAddress' => 'required|string',
                 'landmark' => 'required|string|max:255',
                 'referredBy' => 'nullable|string|max:255',
-                'plan' => 'required|string|max:255',
+                'desired_plan_id' => 'required|integer|exists:plan_list,id',
                 'promo' => 'nullable|string|max:255',
                 'proofOfBilling' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
@@ -58,13 +58,13 @@ class ApplicationController extends Controller
             $application->installation_address = $request->installationAddress;
             $application->landmark = $request->landmark;
             $application->referred_by = $request->referredBy;
-            $application->desired_plan = $request->plan;
-            $application->promo = $request->promo ?? 'None';
+            $application->desired_plan_id = $request->desired_plan_id;
+            $application->promo_id = $request->promo ?? null;
             $application->terms_agreed = true;
             $application->status = 'pending';
 
             if ($request->hasFile('proofOfBilling')) {
-                $path = $request->file('proofOfBilling')->store('applications/proof_of_billing', 'public');
+                $path = $request->file('proofOfBilling')->store('applications/proof_of_billing_url', 'public');
                 $application->proof_of_billing_url = $path;
             }
 
@@ -81,16 +81,6 @@ class ApplicationController extends Controller
             if ($request->hasFile('houseFrontPicture')) {
                 $path = $request->file('houseFrontPicture')->store('applications/house_pictures', 'public');
                 $application->house_front_picture_url = $path;
-            }
-
-            if ($request->hasFile('nearestLandmark1Image')) {
-                $path = $request->file('nearestLandmark1Image')->store('applications/landmarks', 'public');
-                $application->document_attachment_url = $path;
-            }
-
-            if ($request->hasFile('nearestLandmark2Image')) {
-                $path = $request->file('nearestLandmark2Image')->store('applications/landmarks', 'public');
-                $application->other_isp_bill_url = $path;
             }
 
             $application->save();
@@ -129,7 +119,7 @@ class ApplicationController extends Controller
                 $query->where('status', $status);
             }
             
-            $applications = $query->orderBy('created_at', 'desc')->paginate(15);
+            $applications = $query->orderBy('created_at', 'desc')->get();
             
             return response()->json([
                 'applications' => $applications
