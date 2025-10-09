@@ -20,8 +20,8 @@ class GeographicController extends Controller
                 'regions' => $regions->map(function ($region) {
                     return [
                         'id' => $region->id,
-                        'region_code' => (string)$region->id, // ✅ use id as code
-                        'region_name' => $region->region      // ✅ match your DB column
+                        'region_code' => (string)$region->id,
+                        'region_name' => $region->region
                     ];
                 })
             ]);

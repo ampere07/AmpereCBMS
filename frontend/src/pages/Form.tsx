@@ -60,8 +60,9 @@ interface Promo {
 }
 
 const Form: React.FC = () => {
-  const apiBaseUrl = "http://127.0.0.1:8000";
+  const apiBaseUrl = "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -291,8 +292,8 @@ useEffect(() => {
     submissionData.append('referredBy', formData.referredBy);
     
     // Add plan information
-    submissionData.append('desired_plan_id', formData.plan);
-    submissionData.append('promo_id', formData.promo || '');
+    submissionData.append('plan', formData.plan);
+    submissionData.append('promo', formData.promo || '');
     
     // Also append document files directly to the application submission
     // This way they are stored in the correct fields in the database
@@ -349,8 +350,7 @@ useEffect(() => {
       
       const result = await response.json();
       
-      alert('Form submitted successfully! Your application is now pending approval.');
-      handleReset();
+      setShowSuccessModal(true);
       
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -896,6 +896,34 @@ useEffect(() => {
             </div>
             <p className="text-center text-gray-700 font-medium">Submitting your application...</p>
             <p className="text-center text-gray-500 text-sm mt-2">Please wait while we process your form.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-green-100 rounded-full p-3">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Submission Successful!</h3>
+            <p className="text-center text-gray-600 mb-6">Your application has been submitted successfully and is now pending approval.</p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  handleReset();
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

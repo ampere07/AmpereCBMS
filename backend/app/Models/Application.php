@@ -27,17 +27,20 @@ class Application extends Model
         'city',
         'barangay',
         'village',
-        'plan_list',
-        'promo_id',
+        'desired_plan',
+        'promo',
+        'referrer_account_id',
         'referred_by',
-        'proof_of_billing',
-        'government_valid_id',
-        'second_government_valid_id',
-        'house_front_picture',
-        'first_nearest_landmark',
-        'second_nearest_landmark',
+        'proof_of_billing_url',
+        'government_valid_id_url',
+        'second_government_valid_id_url',
+        'house_front_picture_url',
+        'document_attachment_url',
+        'other_isp_bill_url',
         'terms_agreed',
         'status',
+        'created_by_user_id',
+        'updated_by_user_id',
     ];
 
     protected $casts = [
@@ -50,8 +53,20 @@ class Application extends Model
     protected $attributes = [
         'status' => 'pending',
         'terms_agreed' => false,
-        'promo_id' => 'None',
+        'promo' => 'None',
     ];
+
+    /**
+     * Generate a unique 7-digit application ID
+     */
+    public static function generateUniqueApplicationId()
+    {
+        do {
+            $applicationId = rand(1000000, 9999999);
+        } while (self::where('id', $applicationId)->exists());
+        
+        return $applicationId;
+    }
 
     public function scopeByStatus($query, $status)
     {

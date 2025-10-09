@@ -26,7 +26,7 @@ class ApplicationController extends Controller
                 'installationAddress' => 'required|string',
                 'landmark' => 'required|string|max:255',
                 'referredBy' => 'nullable|string|max:255',
-                'desired_plan_id' => 'required|integer|exists:plan_list,id',
+                'plan' => 'required|string|max:255',
                 'promo' => 'nullable|string|max:255',
                 'proofOfBilling' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
@@ -58,8 +58,8 @@ class ApplicationController extends Controller
             $application->installation_address = $request->installationAddress;
             $application->landmark = $request->landmark;
             $application->referred_by = $request->referredBy;
-            $application->desired_plan_id = $request->desired_plan_id;
-            $application->promo_id = $request->promo ?? null;
+            $application->desired_plan = $request->plan;
+            $application->promo = $request->promo ?? 'None';
             $application->terms_agreed = true;
             $application->status = 'pending';
 

@@ -21,10 +21,6 @@ class ApplicationFormController extends Controller
     public function store(Request $request)
     {
         try {
-            // Ensure the application table exists
-            $this->ensureTableExists();
-            
-            // Validate the request data
             $validator = Validator::make($request->all(), [
                 'email' => 'required|email|max:255',
                 'mobile' => 'required|string|max:20',
@@ -52,8 +48,7 @@ class ApplicationFormController extends Controller
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            // Check if email already exists
-            $existingApplication = Application::where('Email_Address', $request->email)->first();
+            $existingApplication = Application::where('email_address', $request->email)->first();
                 
             if ($existingApplication) {
                 return response()->json([
@@ -62,47 +57,40 @@ class ApplicationFormController extends Controller
                 ], 422);
             }
 
-            // Handle document uploads first
             $documentPaths = $this->handleDocumentUploads($request);
             
-            // Generate unique 11-digit Application_ID
-            $applicationId = Application::generateUniqueApplicationId();
-            
-            // Prepare data for insertion matching the migration schema exactly
             $applicationData = [
-                'Application_ID' => $applicationId,
-                'Email_Address' => $request->email,
-                'Mobile_Number' => $request->mobile,
-                'First_Name' => $request->firstName,
-                'Last_Name' => $request->lastName,
-                'Middle_Initial' => $request->middleInitial,
-                'Secondary_Mobile_Number' => $request->secondaryMobile,
-                'Region' => $request->region,
-                'City' => $request->city,
-                'Barangay' => $request->barangay,
-                'Installation_Address' => $request->installationAddress,
-                'Landmark' => $request->landmark,
-                'Referred_by' => $request->referredBy,
-                'desired_plan_id' => $request->plan,
-                'Select_the_applicable_promo' => $request->promo ?? 'None',
-                'Status' => 'pending',
-                'I_agree_to_the_terms_and_conditions' => true,
+                'timestamp' => now(),
+                'email_address' => $request->email,
+                'mobile_number' => $request->mobile,
+                'first_name' => $request->firstName,
+                'last_name' => $request->lastName,
+                'middle_initial' => $request->middleInitial,
+                'secondary_mobile_number' => $request->secondaryMobile,
+                'region' => $request->region,
+                'city' => $request->city,
+                'barangay' => $request->barangay,
+                'installation_address' => $request->installationAddress,
+                'landmark' => $request->landmark,
+                'referred_by' => $request->referredBy,
+                'desired_plan' => $request->plan,
+                'promo' => $request->promo ?? 'None',
+                'status' => 'pending',
+                'terms_agreed' => true,
             ];
 
-            // Add document paths to data
             $applicationData = array_merge($applicationData, $documentPaths);
 
             Log::info('Attempting to create application:', $applicationData);
 
-            // Create new application using the model
             $application = Application::create($applicationData);
             
             if ($application) {
-                Log::info('Application created successfully with ID: ' . $application->Application_ID);
+                Log::info('Application created successfully with ID: ' . $application->id);
                 
                 return response()->json([
                     'message' => 'Application submitted successfully',
-                    'application_id' => $application->Application_ID,
+                    'application_id' => $application->id,
                     'application' => $application
                 ], 201);
             } else {
@@ -119,32 +107,29 @@ class ApplicationFormController extends Controller
         }
     }
 
-
-
     /**
      * Handle document uploads and return file paths
      */
     private function handleDocumentUploads(Request $request)
     {
         $documentPaths = [
-            'Proof_of_Billing' => null,
-            'Government_Valid_ID' => null,
-            '2nd_Government_Valid_ID' => null,
-            'House_Front_Picture' => null,
-            'First_Nearest_landmark' => null,
-            'Second_Nearest_landmark' => null,
+            'proof_of_billing_url' => null,
+            'government_valid_id_url' => null,
+            'second_government_valid_id_url' => null,
+            'house_front_picture_url' => null,
+            'document_attachment_url' => null,
+            'other_isp_bill_url' => null,
         ];
 
         $documentMappings = [
-            'proofOfBilling' => 'Proof_of_Billing',
-            'governmentIdPrimary' => 'Government_Valid_ID',
-            'governmentIdSecondary' => '2nd_Government_Valid_ID',
-            'houseFrontPicture' => 'House_Front_Picture',
-            'nearestLandmark1Image' => 'First_Nearest_landmark',
-            'nearestLandmark2Image' => 'Second_Nearest_landmark',
+            'proofOfBilling' => 'proof_of_billing_url',
+            'governmentIdPrimary' => 'government_valid_id_url',
+            'governmentIdSecondary' => 'second_government_valid_id_url',
+            'houseFrontPicture' => 'house_front_picture_url',
+            'nearestLandmark1Image' => 'document_attachment_url',
+            'nearestLandmark2Image' => 'other_isp_bill_url',
         ];
 
-        // Ensure documents directory exists
         $documentsPath = public_path('assets/documents');
         if (!file_exists($documentsPath)) {
             mkdir($documentsPath, 0755, true);
@@ -162,7 +147,6 @@ class ApplicationFormController extends Controller
                     }
                 } catch (\Exception $e) {
                     Log::error("Failed to upload {$requestKey}: " . $e->getMessage());
-                    // Set to null if upload fails
                     $documentPaths[$dbField] = null;
                 }
             }
@@ -177,7 +161,7 @@ class ApplicationFormController extends Controller
     public function index()
     {
         try {
-            $applications = Application::orderBy('Application_ID', 'desc')->paginate(10);
+            $applications = Application::orderBy('id', 'desc')->paginate(10);
             
             return response()->json(['applications' => $applications]);
             
@@ -193,7 +177,7 @@ class ApplicationFormController extends Controller
     public function show($id)
     {
         try {
-            $application = Application::where('Application_ID', $id)->first();
+            $application = Application::where('id', $id)->first();
 
             if (!$application) {
                 return response()->json(['error' => 'Application not found'], 404);
@@ -213,10 +197,9 @@ class ApplicationFormController extends Controller
     public function debug()
     {
         try {
-            // Get application count and sample data
             $applicationCount = Application::count();
             $sampleApplication = Application::first();
-            $recentApplications = Application::orderBy('Application_ID', 'desc')->limit(3)->get();
+            $recentApplications = Application::orderBy('id', 'desc')->limit(3)->get();
 
             return response()->json([
                 'application_count' => $applicationCount,
@@ -242,7 +225,6 @@ class ApplicationFormController extends Controller
     public function resetTable()
     {
         try {
-            // Delete all applications
             Application::query()->delete();
             Log::info('All applications deleted successfully');
             
@@ -250,26 +232,6 @@ class ApplicationFormController extends Controller
         } catch (\Exception $e) {
             Log::error('Error resetting table: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Ensure the application table exists by running migrations if needed
-     */
-    private function ensureTableExists()
-    {
-        try {
-            if (!Schema::hasTable('application')) {
-                Log::info('Application table does not exist, running migrations...');
-                Artisan::call('migrate', [
-                    '--path' => 'database/migrations/2025_09_19_000003_create_application_table.php',
-                    '--force' => true
-                ]);
-                Log::info('Migration completed successfully');
-            }
-        } catch (\Exception $e) {
-            Log::error('Error ensuring table exists: ' . $e->getMessage());
-            throw new \Exception('Database table setup failed: ' . $e->getMessage());
         }
     }
 }
