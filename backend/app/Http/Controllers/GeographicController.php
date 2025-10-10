@@ -112,4 +112,43 @@ class GeographicController extends Controller
             ], 500);
         }
     }
+
+    public function getVillages(Request $request)
+    {
+        try {
+            $barangayCode = $request->query('barangay_code');
+
+            if (!$barangayCode) {
+                return response()->json([
+                    'message' => 'Barangay code is required'
+                ], 400);
+            }
+
+            $locations = DB::table('location')
+                ->select('id', 'location_name')
+                ->where('barangay_id', $barangayCode)
+                ->orderBy('location_name', 'asc')
+                ->get();
+
+            return response()->json([
+                'villages' => $locations->map(function ($location) {
+                    return [
+                        'id' => $location->id,
+                        'village_code' => (string)$location->id,
+                        'village_name' => $location->location_name
+                    ];
+                })
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve villages', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to retrieve villages',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

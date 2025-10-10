@@ -23,6 +23,7 @@ class ApplicationController extends Controller
                 'region' => 'required|string|max:255',
                 'city' => 'required|string|max:255',
                 'barangay' => 'required|string|max:255',
+                'location' => 'nullable|string|max:255',
                 'installationAddress' => 'required|string',
                 'landmark' => 'required|string|max:255',
                 'referredBy' => 'nullable|string|max:255',
@@ -34,6 +35,7 @@ class ApplicationController extends Controller
                 'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:2048',
                 'nearestLandmark1Image' => 'required|file|mimes:jpg,jpeg,png|max:2048',
                 'nearestLandmark2Image' => 'required|file|mimes:jpg,jpeg,png|max:2048',
+                'promoProof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -55,6 +57,7 @@ class ApplicationController extends Controller
             $application->region = $request->region;
             $application->city = $request->city;
             $application->barangay = $request->barangay;
+            $application->location = $request->location;
             $application->installation_address = $request->installationAddress;
             $application->landmark = $request->landmark;
             $application->referred_by = $request->referredBy;
@@ -81,6 +84,10 @@ class ApplicationController extends Controller
             if ($request->hasFile('houseFrontPicture')) {
                 $path = $request->file('houseFrontPicture')->store('applications/house_pictures', 'public');
                 $application->house_front_picture_url = $path;
+            }
+
+            if ($request->hasFile('promoProof')) {
+                $application->promo_url = $request->file('promoProof')->getClientOriginalName();
             }
 
             $application->save();

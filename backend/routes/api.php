@@ -17,11 +17,13 @@ Route::patch('/applications/{id}/status', [ApplicationController::class, 'update
 Route::get('/regions', [GeographicController::class, 'getRegions']);
 Route::get('/cities', [GeographicController::class, 'getCities']);
 Route::get('/barangays', [GeographicController::class, 'getBarangays']);
+Route::get('/villages', [GeographicController::class, 'getVillages']);
 
 // Also keep singular versions for backward compatibility
 Route::get('/region', [GeographicController::class, 'getRegions']);
 Route::get('/city', [GeographicController::class, 'getCities']);
 Route::get('/barangay', [GeographicController::class, 'getBarangays']);
+Route::get('/village', [GeographicController::class, 'getVillages']);
 
 // Plan Management Routes - Using plan_list table
 Route::get('/plans', [PlanController::class, 'index']);
@@ -40,6 +42,7 @@ Route::get('/debug/tables', function () {
             'region' => Schema::hasTable('region'),
             'city' => Schema::hasTable('city'),
             'barangay' => Schema::hasTable('barangay'),
+            'location' => Schema::hasTable('location'),
         ];
         
         if (Schema::hasTable('region')) {
@@ -58,6 +61,12 @@ Route::get('/debug/tables', function () {
             $result['barangay_columns'] = Schema::getColumnListing('barangay');
             $result['barangay_count'] = DB::table('barangay')->count();
             $result['barangay_sample'] = DB::table('barangay')->limit(3)->get();
+        }
+        
+        if (Schema::hasTable('location')) {
+            $result['location_columns'] = Schema::getColumnListing('location');
+            $result['location_count'] = DB::table('location')->count();
+            $result['location_sample'] = DB::table('location')->limit(3)->get();
         }
         
         return response()->json(['success' => true, 'data' => $result]);

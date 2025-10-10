@@ -19,6 +19,12 @@ interface Barangay {
   barangay_name: string;
 }
 
+interface Village {
+  id: number;
+  village_code: string;
+  village_name: string;
+}
+
 interface Plan {
   id: number;
   plan_name: string;
@@ -39,6 +45,7 @@ interface FormState {
   city: string;
   barangay: string;
   location: string;
+  completeLocation: string;
   installationAddress: string;
   landmark: string;
   nearestLandmark1Image: File | null;
@@ -50,6 +57,7 @@ interface FormState {
   governmentIdPrimary: File | null;
   governmentIdSecondary: File | null;
   houseFrontPicture: File | null;
+  promoProof: File | null;
   privacyAgreement: boolean;
 }
 
@@ -67,6 +75,7 @@ const Form: React.FC = () => {
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
+  const [villages, setVillages] = useState<Village[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promos, setPromos] = useState<Promo[]>([]);
 
@@ -81,6 +90,7 @@ const Form: React.FC = () => {
     city: '',
     barangay: '',
     location: '',
+    completeLocation: '',
     installationAddress: '',
     landmark: '',
     nearestLandmark1Image: null,
@@ -92,6 +102,7 @@ const Form: React.FC = () => {
     governmentIdPrimary: null,
     governmentIdSecondary: null,
     houseFrontPicture: null,
+    promoProof: null,
     privacyAgreement: false
   });
   
@@ -147,7 +158,8 @@ useEffect(() => {
             ...prev,
             city: '',
             barangay: '',
-            location: ''
+            location: '',
+            completeLocation: ''
           }));
           setBarangays([]);
         } catch (error) {
@@ -195,8 +207,10 @@ useEffect(() => {
           setFormData(prev => ({
             ...prev,
             barangay: '',
-            location: ''
+            location: '',
+            completeLocation: ''
           }));
+          setVillages([]);
         } catch (error) {
           console.error('Error fetching barangays:', error);
           setBarangays([]);
@@ -209,6 +223,33 @@ useEffect(() => {
     fetchBarangays();
   }, [formData.city]);
 
+  useEffect(() => {
+    const fetchVillages = async () => {
+      if (formData.barangay) {
+        try {
+          const response = await fetch(`${apiBaseUrl}/api/villages?barangay_code=${formData.barangay}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch villages');
+          }
+          const data = await response.json();
+          setVillages(data.villages || []);
+          setFormData(prev => ({
+            ...prev,
+            location: '',
+            completeLocation: ''
+          }));
+        } catch (error) {
+          console.error('Error fetching villages:', error);
+          setVillages([]);
+        }
+      } else {
+        setVillages([]);
+      }
+    };
+
+    fetchVillages();
+  }, [formData.barangay]);
+
   // Track full location text
   const [fullLocationText, setFullLocationText] = useState<string>('');
 
@@ -216,6 +257,7 @@ useEffect(() => {
     const selectedRegion = regions.find(r => r.region_code === formData.region);
     const selectedCity = cities.find(c => c.city_code === formData.city);
     const selectedBarangay = barangays.find(b => b.barangay_code === formData.barangay);
+    const selectedLocation = villages.find(v => v.village_code === formData.location);
     
     let locationText = '';
     
@@ -227,6 +269,10 @@ useEffect(() => {
         
         if (selectedBarangay) {
           locationText += ', ' + selectedBarangay.barangay_name;
+          
+          if (selectedLocation) {
+            locationText += ', ' + selectedLocation.village_name;
+          }
         }
       }
     }
@@ -235,10 +281,10 @@ useEffect(() => {
     if (locationText) {
       setFormData(prev => ({
         ...prev,
-        location: locationText
+        completeLocation: locationText
       }));
     }
-  }, [formData.region, formData.city, formData.barangay, regions, cities, barangays]);
+  }, [formData.region, formData.city, formData.barangay, formData.location, regions, cities, barangays, villages]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -283,10 +329,12 @@ useEffect(() => {
     const selectedRegion = formData.region ? regions.find(r => r.region_code === formData.region)?.region_name || '' : '';
     const selectedCity = formData.city ? cities.find(c => c.city_code === formData.city)?.city_name || '' : '';
     const selectedBarangay = formData.barangay ? barangays.find(b => b.barangay_code === formData.barangay)?.barangay_name || '' : '';
+    const selectedLocation = formData.location ? villages.find(v => v.village_code === formData.location)?.village_name || '' : '';
     
     submissionData.append('region', selectedRegion);
     submissionData.append('city', selectedCity);
     submissionData.append('barangay', selectedBarangay);
+    submissionData.append('location', selectedLocation);
     submissionData.append('installationAddress', formData.installationAddress);
     submissionData.append('landmark', formData.landmark);
     submissionData.append('referredBy', formData.referredBy);
@@ -319,6 +367,10 @@ useEffect(() => {
     
     if (formData.nearestLandmark2Image) {
       submissionData.append('nearestLandmark2Image', formData.nearestLandmark2Image);
+    }
+    
+    if (formData.promoProof) {
+      submissionData.append('promoProof', formData.promoProof);
     }
     
     try {
@@ -381,6 +433,7 @@ useEffect(() => {
       city: '',
       barangay: '',
       location: '',
+      completeLocation: '',
       installationAddress: '',
       landmark: '',
       nearestLandmark1Image: null,
@@ -392,6 +445,7 @@ useEffect(() => {
       governmentIdPrimary: null,
       governmentIdSecondary: null,
       houseFrontPicture: null,
+      promoProof: null,
       privacyAgreement: false
     });
     
@@ -405,7 +459,7 @@ useEffect(() => {
   return (
     <div className="mx-auto max-w-4xl p-4 bg-white shadow-md rounded-lg">
       <header className="border-b border-gray-200 pb-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Your ISP Brand</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Sync</h1>
       </header>
       
       <main>
@@ -583,16 +637,35 @@ useEffect(() => {
               
               <div className="mb-4">
                 <label className="block text-gray-700 font-medium mb-2" htmlFor="location">
-                  Location <span className="text-red-500">*</span>
+                  Location
+                </label>
+                <select
+                  id="location"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  disabled={!formData.barangay}
+                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+                >
+                  <option value="">Select location</option>
+                  {villages && villages.length > 0 && villages.map(village => (
+                    <option key={village.id} value={village.village_code}>{village.village_name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2" htmlFor="completeLocation">
+                  Complete Location <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  id="location"
-                  name="location"
+                  id="completeLocation"
+                  name="completeLocation"
                   value={fullLocationText}
                   readOnly
                   required
-                  placeholder="Select region, city, and barangay above"
+                  placeholder="Select region, city, barangay, and location above"
                   className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
                 />
                 {!fullLocationText && (
@@ -843,6 +916,32 @@ useEffect(() => {
                   </span>
                 </div>
               </div>
+              
+              {formData.promo && formData.promo !== '' && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 font-medium mb-2" htmlFor="promoProof">
+                    Promo Proof Document <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      id="promoProof"
+                      name="promoProof"
+                      onChange={handleFileChange}
+                      required
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="hidden"
+                    />
+                    <label htmlFor="promoProof" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+                      Choose File
+                    </label>
+                    <span className="ml-3 text-sm text-gray-600">
+                      {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
+                    </span>
+                  </div>
+                  <small className="text-gray-500 text-sm">Required when a promo is selected</small>
+                </div>
+              )}
             </div>
           </section>
           

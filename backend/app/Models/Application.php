@@ -26,7 +26,7 @@ class Application extends Model
         'region',
         'city',
         'barangay',
-        'village',
+        'location',
         'desired_plan',
         'promo',
         'referrer_account_id',
