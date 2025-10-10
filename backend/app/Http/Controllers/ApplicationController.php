@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\Plan;
+use App\Models\PromoList;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -61,8 +63,25 @@ class ApplicationController extends Controller
             $application->installation_address = $request->installationAddress;
             $application->landmark = $request->landmark;
             $application->referred_by = $request->referredBy;
-            $application->desired_plan = $request->plan;
-            $application->promo = $request->promo ?? 'None';
+            
+            $plan = Plan::find($request->plan);
+            if ($plan) {
+                $application->desired_plan = $plan->plan_name;
+            } else {
+                $application->desired_plan = $request->plan;
+            }
+            
+            if ($request->promo && $request->promo !== 'None') {
+                $promo = PromoList::find($request->promo);
+                if ($promo) {
+                    $application->promo = $promo->name;
+                } else {
+                    $application->promo = $request->promo;
+                }
+            } else {
+                $application->promo = 'None';
+            }
+            
             $application->terms_agreed = true;
             $application->status = 'pending';
 
