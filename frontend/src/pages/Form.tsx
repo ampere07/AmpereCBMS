@@ -68,7 +68,7 @@ interface Promo {
 }
 
 const Form: React.FC = () => {
-  const apiBaseUrl = "https://backend1.atssfiber.ph";
+  const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
@@ -97,7 +97,7 @@ const Form: React.FC = () => {
     nearestLandmark2Image: null,
     referredBy: '',
     plan: '',
-    promo: 'None',
+    promo: '',
     proofOfBilling: null,
     governmentIdPrimary: null,
     governmentIdSecondary: null,
@@ -177,13 +177,15 @@ useEffect(() => {
   useEffect(() => {
   const fetchPromos = async () => {
     try {
+      console.log('Fetching promos from:', `${apiBaseUrl}/api/promo_list`);
       const response = await fetch(`${apiBaseUrl}/api/promo_list`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch promos');
       }
       const data = await response.json();
-      setPromos(data.data || []); // adjust if your Laravel controller returns differently
+      console.log('Promos fetched successfully:', data);
+      setPromos(data.data || []);
     } catch (error) {
       console.error('Error fetching promos:', error);
       setPromos([]);
@@ -440,7 +442,7 @@ useEffect(() => {
       nearestLandmark2Image: null,
       referredBy: '',
       plan: '',
-      promo: 'None',
+      promo: '',
       proofOfBilling: null,
       governmentIdPrimary: null,
       governmentIdSecondary: null,
@@ -807,14 +809,19 @@ useEffect(() => {
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">None</option>
-{promos && promos.length > 0 && promos
-  .filter(promo => promo.status === 'active')
-  .map(promo => (
-    <option key={promo.id} value={promo.id}>
-      {promo.name}
-    </option>
-))}
+                  {promos && promos.length > 0 ? (
+                    promos.map(promo => (
+                      <option key={promo.id} value={promo.name}>
+                        {promo.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Loading promos...</option>
+                  )}
                 </select>
+                {promos.length === 0 && (
+                  <small className="text-gray-500 text-sm">No active promos available</small>
+                )}
               </div>
             </div>
           </section>

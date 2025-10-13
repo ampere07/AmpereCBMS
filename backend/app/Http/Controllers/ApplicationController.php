@@ -71,13 +71,8 @@ class ApplicationController extends Controller
                 $application->desired_plan = $request->plan;
             }
             
-            if ($request->promo && $request->promo !== 'None') {
-                $promo = PromoList::find($request->promo);
-                if ($promo) {
-                    $application->promo = $promo->name;
-                } else {
-                    $application->promo = $request->promo;
-                }
+            if ($request->promo && $request->promo !== '') {
+                $application->promo = $request->promo;
             } else {
                 $application->promo = 'None';
             }
