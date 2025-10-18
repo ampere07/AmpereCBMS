@@ -262,22 +262,25 @@ useEffect(() => {
     const selectedLocation = villages.find(v => v.village_code === formData.location);
     
     let locationText = '';
+    const locationParts = [];
+    
+    if (selectedLocation) {
+      locationParts.push(selectedLocation.village_name);
+    }
+    
+    if (selectedBarangay) {
+      locationParts.push(selectedBarangay.barangay_name);
+    }
+    
+    if (selectedCity) {
+      locationParts.push(selectedCity.city_name);
+    }
     
     if (selectedRegion) {
-      locationText += selectedRegion.region_name;
-      
-      if (selectedCity) {
-        locationText += ', ' + selectedCity.city_name;
-        
-        if (selectedBarangay) {
-          locationText += ', ' + selectedBarangay.barangay_name;
-          
-          if (selectedLocation) {
-            locationText += ', ' + selectedLocation.village_name;
-          }
-        }
-      }
+      locationParts.push(selectedRegion.region_name);
     }
+    
+    locationText = locationParts.join(', ');
     
     setFullLocationText(locationText);
     if (locationText) {
