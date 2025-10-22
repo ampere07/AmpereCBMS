@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Models\Plan;
 use App\Models\PromoList;
+use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -12,6 +13,13 @@ use Illuminate\Support\Facades\Storage;
 
 class ApplicationController extends Controller
 {
+    protected $googleDriveService;
+
+    public function __construct(GoogleDriveService $googleDriveService)
+    {
+        $this->googleDriveService = $googleDriveService;
+    }
+
     public function store(Request $request)
     {
         try {
@@ -47,6 +55,53 @@ class ApplicationController extends Controller
                 ], 422);
             }
 
+            $fullName = trim($request->firstName . ' ' . ($request->middleInitial ? $request->middleInitial . '. ' : '') . $request->lastName);
+
+            $localDocumentPaths = $this->handleLocalDocumentUploads($request);
+            
+            $googleDriveUrls = [];
+            try {
+                Log::info('=== GOOGLE DRIVE UPLOAD START ===');
+                Log::info('Full Name: ' . $fullName);
+                
+                $filesToUpload = [];
+                
+                foreach ($localDocumentPaths as $fieldName => $localPath) {
+                    if ($localPath) {
+                        $fullPath = public_path($localPath);
+                        Log::info("Checking file: {$fieldName}", [
+                            'path' => $fullPath,
+                            'exists' => file_exists($fullPath),
+                            'readable' => is_readable($fullPath),
+                            'size' => file_exists($fullPath) ? filesize($fullPath) : 0
+                        ]);
+                        $filesToUpload[$fieldName] = $fullPath;
+                    }
+                }
+
+                Log::info('Files to upload', [
+                    'count' => count($filesToUpload),
+                    'files' => array_keys($filesToUpload)
+                ]);
+
+                if (count($filesToUpload) > 0) {
+                    Log::info('Calling GoogleDriveService...');
+                    $googleDriveUrls = $this->googleDriveService->uploadApplicationDocuments($fullName, $filesToUpload);
+                    Log::info('Google Drive URLs received', ['urls' => $googleDriveUrls]);
+                } else {
+                    Log::warning('No files to upload to Google Drive');
+                }
+                
+                Log::info('=== GOOGLE DRIVE UPLOAD END ===');
+                
+            } catch (\Exception $e) {
+                Log::error('=== GOOGLE DRIVE UPLOAD FAILED ===');
+                Log::error('Error Message: ' . $e->getMessage());
+                Log::error('Error File: ' . $e->getFile() . ':' . $e->getLine());
+                Log::error('Stack trace: ' . $e->getTraceAsString());
+                Log::error('=== END ERROR ===');
+            }
+
             $application = new Application();
             
             $application->timestamp = now();
@@ -80,35 +135,40 @@ class ApplicationController extends Controller
             $application->terms_agreed = true;
             $application->status = 'pending';
 
-            if ($request->hasFile('proofOfBilling')) {
-                $path = $request->file('proofOfBilling')->store('applications/proof_of_billing_url', 'public');
-                $application->proof_of_billing_url = $path;
+            if (isset($googleDriveUrls['proof_of_billing_url'])) {
+                $application->proof_of_billing_url = $googleDriveUrls['proof_of_billing_url'];
             }
 
-            if ($request->hasFile('governmentIdPrimary')) {
-                $path = $request->file('governmentIdPrimary')->store('applications/government_ids', 'public');
-                $application->government_valid_id_url = $path;
+            if (isset($googleDriveUrls['government_valid_id_url'])) {
+                $application->government_valid_id_url = $googleDriveUrls['government_valid_id_url'];
             }
 
-            if ($request->hasFile('governmentIdSecondary')) {
-                $path = $request->file('governmentIdSecondary')->store('applications/government_ids', 'public');
-                $application->second_government_valid_id_url = $path;
+            if (isset($googleDriveUrls['second_government_valid_id_url'])) {
+                $application->second_government_valid_id_url = $googleDriveUrls['second_government_valid_id_url'];
             }
 
-            if ($request->hasFile('houseFrontPicture')) {
-                $path = $request->file('houseFrontPicture')->store('applications/house_pictures', 'public');
-                $application->house_front_picture_url = $path;
+            if (isset($googleDriveUrls['house_front_picture_url'])) {
+                $application->house_front_picture_url = $googleDriveUrls['house_front_picture_url'];
             }
 
-            if ($request->hasFile('promoProof')) {
-                $application->promo_url = $request->file('promoProof')->getClientOriginalName();
+            if (isset($googleDriveUrls['nearest_landmark1_url'])) {
+                $application->nearest_landmark1_url = $googleDriveUrls['nearest_landmark1_url'];
+            }
+
+            if (isset($googleDriveUrls['nearest_landmark2_url'])) {
+                $application->nearest_landmark2_url = $googleDriveUrls['nearest_landmark2_url'];
+            }
+
+            if (isset($googleDriveUrls['promo_url'])) {
+                $application->promo_url = $googleDriveUrls['promo_url'];
             }
 
             $application->save();
 
             Log::info('Application submitted successfully', [
                 'application_id' => $application->id,
-                'email' => $application->email_address
+                'email' => $application->email_address,
+                'google_drive_folder' => $fullName
             ]);
 
             return response()->json([
@@ -127,6 +187,45 @@ class ApplicationController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    private function handleLocalDocumentUploads(Request $request)
+    {
+        $documentPaths = [];
+
+        $documentMappings = [
+            'proofOfBilling' => 'proofOfBilling',
+            'governmentIdPrimary' => 'governmentIdPrimary',
+            'governmentIdSecondary' => 'governmentIdSecondary',
+            'houseFrontPicture' => 'houseFrontPicture',
+            'nearestLandmark1Image' => 'nearestLandmark1Image',
+            'nearestLandmark2Image' => 'nearestLandmark2Image',
+            'promoProof' => 'promoProof',
+        ];
+
+        $documentsPath = public_path('assets/documents');
+        if (!file_exists($documentsPath)) {
+            mkdir($documentsPath, 0755, true);
+        }
+
+        foreach ($documentMappings as $requestKey => $fieldKey) {
+            if ($request->hasFile($requestKey)) {
+                try {
+                    $file = $request->file($requestKey);
+                    $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    
+                    if ($file->move($documentsPath, $fileName)) {
+                        $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
+                        Log::info("Successfully uploaded locally: {$fileName} for {$requestKey}");
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Failed to upload locally {$requestKey}: " . $e->getMessage());
+                    $documentPaths[$fieldKey] = null;
+                }
+            }
+        }
+
+        return $documentPaths;
     }
 
     public function index(Request $request)

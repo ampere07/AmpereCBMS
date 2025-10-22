@@ -3,21 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Services\GoogleDriveService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Artisan;
 
 class ApplicationFormController extends Controller
 {
-    /**
-     * Store a new application submission
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
+    protected $googleDriveService;
+
+    public function __construct(GoogleDriveService $googleDriveService)
+    {
+        $this->googleDriveService = $googleDriveService;
+    }
+
     public function store(Request $request)
     {
         try {
@@ -42,6 +42,7 @@ class ApplicationFormController extends Controller
                 'governmentIdPrimary' => 'required|file|mimes:jpeg,jpg,png,pdf|max:2048',
                 'governmentIdSecondary' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:2048',
                 'houseFrontPicture' => 'required|file|mimes:jpeg,jpg,png|max:2048',
+                'promoProof' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:2048',
             ]);
 
             if ($validator->fails()) {
@@ -57,7 +58,28 @@ class ApplicationFormController extends Controller
                 ], 422);
             }
 
-            $documentPaths = $this->handleDocumentUploads($request);
+            $fullName = trim($request->firstName . ' ' . ($request->middleInitial ? $request->middleInitial . '. ' : '') . $request->lastName);
+
+            $localDocumentPaths = $this->handleLocalDocumentUploads($request);
+            
+            $googleDriveUrls = [];
+            try {
+                $filesToUpload = [];
+                
+                foreach ($localDocumentPaths as $fieldName => $localPath) {
+                    if ($localPath) {
+                        $fullPath = public_path($localPath);
+                        $filesToUpload[$fieldName] = $fullPath;
+                    }
+                }
+
+                $googleDriveUrls = $this->googleDriveService->uploadApplicationDocuments($fullName, $filesToUpload);
+                
+                Log::info('Google Drive upload completed', ['urls' => $googleDriveUrls]);
+                
+            } catch (\Exception $e) {
+                Log::error('Google Drive upload failed: ' . $e->getMessage());
+            }
             
             $applicationData = [
                 'timestamp' => now(),
@@ -79,7 +101,7 @@ class ApplicationFormController extends Controller
                 'terms_agreed' => true,
             ];
 
-            $applicationData = array_merge($applicationData, $documentPaths);
+            $applicationData = array_merge($applicationData, $googleDriveUrls);
 
             Log::info('Attempting to create application:', $applicationData);
 
@@ -107,27 +129,18 @@ class ApplicationFormController extends Controller
         }
     }
 
-    /**
-     * Handle document uploads and return file paths
-     */
-    private function handleDocumentUploads(Request $request)
+    private function handleLocalDocumentUploads(Request $request)
     {
-        $documentPaths = [
-            'proof_of_billing_url' => null,
-            'government_valid_id_url' => null,
-            'second_government_valid_id_url' => null,
-            'house_front_picture_url' => null,
-            'document_attachment_url' => null,
-            'other_isp_bill_url' => null,
-        ];
+        $documentPaths = [];
 
         $documentMappings = [
-            'proofOfBilling' => 'proof_of_billing_url',
-            'governmentIdPrimary' => 'government_valid_id_url',
-            'governmentIdSecondary' => 'second_government_valid_id_url',
-            'houseFrontPicture' => 'house_front_picture_url',
-            'nearestLandmark1Image' => 'document_attachment_url',
-            'nearestLandmark2Image' => 'other_isp_bill_url',
+            'proofOfBilling' => 'proofOfBilling',
+            'governmentIdPrimary' => 'governmentIdPrimary',
+            'governmentIdSecondary' => 'governmentIdSecondary',
+            'houseFrontPicture' => 'houseFrontPicture',
+            'nearestLandmark1Image' => 'nearestLandmark1Image',
+            'nearestLandmark2Image' => 'nearestLandmark2Image',
+            'promoProof' => 'promoProof',
         ];
 
         $documentsPath = public_path('assets/documents');
@@ -135,19 +148,19 @@ class ApplicationFormController extends Controller
             mkdir($documentsPath, 0755, true);
         }
 
-        foreach ($documentMappings as $requestKey => $dbField) {
+        foreach ($documentMappings as $requestKey => $fieldKey) {
             if ($request->hasFile($requestKey)) {
                 try {
                     $file = $request->file($requestKey);
                     $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                     
                     if ($file->move($documentsPath, $fileName)) {
-                        $documentPaths[$dbField] = 'assets/documents/' . $fileName;
-                        Log::info("Successfully uploaded: {$fileName} for {$requestKey}");
+                        $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
+                        Log::info("Successfully uploaded locally: {$fileName} for {$requestKey}");
                     }
                 } catch (\Exception $e) {
-                    Log::error("Failed to upload {$requestKey}: " . $e->getMessage());
-                    $documentPaths[$dbField] = null;
+                    Log::error("Failed to upload locally {$requestKey}: " . $e->getMessage());
+                    $documentPaths[$fieldKey] = null;
                 }
             }
         }
@@ -155,9 +168,6 @@ class ApplicationFormController extends Controller
         return $documentPaths;
     }
 
-    /**
-     * Get all applications
-     */
     public function index()
     {
         try {
@@ -171,9 +181,6 @@ class ApplicationFormController extends Controller
         }
     }
 
-    /**
-     * Get specific application
-     */
     public function show($id)
     {
         try {
@@ -191,9 +198,6 @@ class ApplicationFormController extends Controller
         }
     }
 
-    /**
-     * Debug endpoint
-     */
     public function debug()
     {
         try {
@@ -219,9 +223,6 @@ class ApplicationFormController extends Controller
         }
     }
 
-    /**
-     * Reset table endpoint (for testing)
-     */
     public function resetTable()
     {
         try {

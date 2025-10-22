@@ -1,0 +1,214 @@
+<?php
+
+namespace App\Services;
+
+use Google\Client;
+use Google\Service\Drive;
+use Google\Service\Drive\DriveFile;
+use Google\Service\Drive\Permission;
+use Illuminate\Support\Facades\Log;
+
+class GoogleDriveService
+{
+    private $client;
+    private $driveService;
+    private $folderId;
+
+    public function __construct()
+    {
+        $this->client = new Client();
+        $this->client->setApplicationName('AmpereCBMS');
+        $this->client->setScopes([Drive::DRIVE_FILE]);
+        $this->client->setAuthConfig([
+            'type' => 'service_account',
+            'project_id' => config('services.google.project_id'),
+            'private_key_id' => config('services.google.private_key_id'),
+            'private_key' => config('services.google.private_key'),
+            'client_email' => config('services.google.client_email'),
+            'client_id' => config('services.google.client_id'),
+            'auth_uri' => 'https://accounts.google.com/o/oauth2/auth',
+            'token_uri' => 'https://oauth2.googleapis.com/token',
+            'auth_provider_x509_cert_url' => 'https://www.googleapis.com/oauth2/v1/certs',
+        ]);
+
+        $this->driveService = new Drive($this->client);
+        $this->folderId = config('services.google.folder_id');
+    }
+
+    public function uploadApplicationDocuments($fullName, $files)
+    {
+        try {
+            Log::info('Starting Google Drive upload with folder creation', [
+                'applicant' => $fullName,
+                'parent_folder_id' => $this->folderId
+            ]);
+
+            $applicantFolderId = $this->createApplicantFolder($fullName);
+            
+            if (!$applicantFolderId) {
+                throw new \Exception('Failed to create applicant folder');
+            }
+
+            Log::info('Applicant folder created', ['folder_id' => $applicantFolderId]);
+
+            $uploadedUrls = [];
+
+            $fieldMapping = [
+                'proofOfBilling' => 'proof_of_billing_url',
+                'governmentIdPrimary' => 'government_valid_id_url',
+                'governmentIdSecondary' => 'second_government_valid_id_url',
+                'houseFrontPicture' => 'house_front_picture_url',
+                'nearestLandmark1Image' => 'nearest_landmark1_url',
+                'nearestLandmark2Image' => 'nearest_landmark2_url',
+                'promoProof' => 'promo_url',
+            ];
+
+            foreach ($files as $fieldName => $filePath) {
+                if (empty($filePath) || !file_exists($filePath)) {
+                    Log::warning("File not found for {$fieldName}: {$filePath}");
+                    continue;
+                }
+
+                try {
+                    $dbFieldName = $fieldMapping[$fieldName] ?? null;
+                    if (!$dbFieldName) {
+                        Log::warning("No database field mapping for {$fieldName}");
+                        continue;
+                    }
+
+                    $fileId = $this->uploadFile($filePath, $applicantFolderId, $fieldName);
+                    if ($fileId) {
+                        $viewUrl = "https://drive.google.com/file/d/{$fileId}/view";
+                        $uploadedUrls[$dbFieldName] = $viewUrl;
+                        Log::info("Successfully uploaded {$fieldName}", [
+                            'file_id' => $fileId,
+                            'url' => $viewUrl
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Failed to upload {$fieldName}: " . $e->getMessage());
+                }
+            }
+
+            Log::info('Google Drive upload completed', [
+                'applicant' => $fullName,
+                'folder_id' => $applicantFolderId,
+                'files_uploaded' => count($uploadedUrls)
+            ]);
+
+            return $uploadedUrls;
+
+        } catch (\Exception $e) {
+            Log::error('Google Drive upload error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function createApplicantFolder($fullName)
+    {
+        try {
+            Log::info('Creating applicant folder', [
+                'name' => $fullName,
+                'parent' => $this->folderId
+            ]);
+
+            $folderMetadata = new DriveFile([
+                'name' => $fullName,
+                'mimeType' => 'application/vnd.google-apps.folder',
+                'parents' => [$this->folderId]
+            ]);
+
+            $folder = $this->driveService->files->create($folderMetadata, [
+                'fields' => 'id',
+                'supportsAllDrives' => true
+            ]);
+
+            Log::info("Folder created successfully", [
+                'folder_id' => $folder->id,
+                'folder_name' => $fullName
+            ]);
+
+            return $folder->id;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to create folder: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function uploadFile($filePath, $folderId, $fieldName)
+    {
+        try {
+            $fileName = $this->generateFileName($fieldName, $filePath);
+            $mimeType = mime_content_type($filePath);
+
+            Log::info("Uploading file to folder", [
+                'name' => $fileName,
+                'folder_id' => $folderId,
+                'mime' => $mimeType,
+                'size' => filesize($filePath)
+            ]);
+
+            $fileMetadata = new DriveFile([
+                'name' => $fileName,
+                'parents' => [$folderId]
+            ]);
+
+            $content = file_get_contents($filePath);
+
+            $file = $this->driveService->files->create($fileMetadata, [
+                'data' => $content,
+                'mimeType' => $mimeType,
+                'uploadType' => 'multipart',
+                'fields' => 'id',
+                'supportsAllDrives' => true
+            ]);
+
+            $this->makeFileViewable($file->id);
+
+            return $file->id;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to upload file: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function makeFileViewable($fileId)
+    {
+        try {
+            $permission = new Permission([
+                'type' => 'anyone',
+                'role' => 'reader'
+            ]);
+
+            $this->driveService->permissions->create($fileId, $permission, [
+                'supportsAllDrives' => true
+            ]);
+            
+            Log::info("Set file {$fileId} to viewable by anyone with link");
+
+        } catch (\Exception $e) {
+            Log::error('Failed to set file permissions: ' . $e->getMessage());
+        }
+    }
+
+    private function generateFileName($fieldName, $filePath)
+    {
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        
+        $nameMap = [
+            'proofOfBilling' => 'Proof_of_Billing',
+            'governmentIdPrimary' => 'Government_ID_Primary',
+            'governmentIdSecondary' => 'Government_ID_Secondary',
+            'houseFrontPicture' => 'House_Front_Picture',
+            'nearestLandmark1Image' => 'Nearest_Landmark_1',
+            'nearestLandmark2Image' => 'Nearest_Landmark_2',
+            'promoProof' => 'Promo_Proof',
+        ];
+
+        $documentType = $nameMap[$fieldName] ?? $fieldName;
+        
+        return $documentType . '.' . $extension;
+    }
+}

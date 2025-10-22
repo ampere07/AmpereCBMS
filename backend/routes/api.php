@@ -85,3 +85,50 @@ Route::get('/health', function () {
         'message' => 'AmpereCBMS API is running'
     ]);
 });
+
+Route::get('/debug/gdrive-status', function () {
+    try {
+        $diagnostics = [
+            'google_client_exists' => class_exists('Google\Client'),
+            'service_file_exists' => file_exists(app_path('Services/GoogleDriveService.php')),
+            'config_exists' => !empty(config('services.google')),
+            'folder_id' => config('services.google.folder_id') ?? 'NOT SET',
+            'client_email' => config('services.google.client_email') ?? 'NOT SET',
+            'has_private_key' => !empty(config('services.google.private_key')),
+            'private_key_length' => strlen(config('services.google.private_key') ?? ''),
+        ];
+        
+        return response()->json($diagnostics);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
+Route::get('/debug/latest-logs', function () {
+    try {
+        $logFile = storage_path('logs/laravel.log');
+        
+        if (!file_exists($logFile)) {
+            return response()->json([
+                'error' => 'Log file does not exist',
+                'path' => $logFile
+            ]);
+        }
+        
+        $lines = file($logFile);
+        $lastLines = array_slice($lines, -100);
+        
+        return response()->json([
+            'log_file_exists' => true,
+            'total_lines' => count($lines),
+            'last_100_lines' => implode('', $lastLines)
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
