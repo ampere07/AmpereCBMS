@@ -3,10 +3,21 @@
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\GeographicController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use App\Http\Controllers\PromoController;
+
+// Authentication Routes
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout']);
+Route::get('/user', [AuthController::class, 'user']);
+
+// Dashboard Routes (Protected)
+Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+Route::get('/dashboard/recent-applications', [DashboardController::class, 'recentApplications']);
 
 Route::post('/application/store', [ApplicationController::class, 'store']);
 
@@ -33,6 +44,16 @@ Route::put('/plans/{id}', [PlanController::class, 'update']);
 Route::delete('/plans/{id}', [PlanController::class, 'destroy']);
 
 Route::get('/promo_list', [PromoController::class, 'index']);
+
+// Temporary cache clear route - DELETE AFTER USE
+Route::get('/clear-cache', function () {
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    return response()->json([
+        'success' => true,
+        'message' => 'Cache cleared successfully'
+    ]);
+});
 
 Route::get('/debug/tables', function () {
     try {
