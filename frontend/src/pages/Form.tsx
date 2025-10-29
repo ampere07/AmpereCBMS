@@ -71,9 +71,11 @@ export interface FormRef {
 
 interface FormProps {
   showEditButton?: boolean;
+  onLayoutChange?: (layout: 'original' | 'multistep') => void;
+  currentLayout?: 'original' | 'multistep';
 }
 
-const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false }, ref) => {
+const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original' }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -523,11 +525,12 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false }, ref) =>
                   Save
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Page Background Color
-                  </label>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Page Background Color
+                    </label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
@@ -564,6 +567,64 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false }, ref) =>
                     />
                   </div>
                 </div>
+                </div>
+                
+                {onLayoutChange && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Form Layout
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => onLayoutChange('original')}
+                        className={`p-3 border-2 rounded-lg text-left transition-all ${
+                          currentLayout === 'original'
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-sm">Original Layout</h4>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Single-page form
+                            </p>
+                          </div>
+                          {currentLayout === 'original' && (
+                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => onLayoutChange('multistep')}
+                        className={`p-3 border-2 rounded-lg text-left transition-all ${
+                          currentLayout === 'multistep'
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-sm">Multi-Step Layout</h4>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Step-by-step form
+                            </p>
+                          </div>
+                          {currentLayout === 'multistep' && (
+                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

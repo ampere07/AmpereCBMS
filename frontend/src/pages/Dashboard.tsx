@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Form, { FormRef } from './Form';
+import MultiStepForm, { MultiStepFormRef } from '../components/MultiStepForm';
 
 interface User {
   id: number;
@@ -33,6 +34,7 @@ interface DashboardStats {
 const Dashboard: React.FC = () => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const formRef = useRef<FormRef>(null);
+  const multiStepFormRef = useRef<MultiStepFormRef>(null);
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     total_applications: 0,
@@ -42,11 +44,17 @@ const Dashboard: React.FC = () => {
   });
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [formLayout, setFormLayout] = useState<'original' | 'multistep'>('original');
 
   useEffect(() => {
     const userData = localStorage.getItem('user_data');
     if (userData) {
       setUser(JSON.parse(userData));
+    }
+
+    const savedLayout = localStorage.getItem('form_layout') as 'original' | 'multistep';
+    if (savedLayout) {
+      setFormLayout(savedLayout);
     }
 
     fetchDashboardData();
@@ -91,6 +99,11 @@ const Dashboard: React.FC = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
     window.location.href = '/login';
+  };
+
+  const handleLayoutChange = (layout: 'original' | 'multistep') => {
+    setFormLayout(layout);
+    localStorage.setItem('form_layout', layout);
   };
 
   const formatDate = (dateString: string) => {
@@ -152,7 +165,21 @@ const Dashboard: React.FC = () => {
       </nav>
 
       <main>
-        <Form ref={formRef} showEditButton={true} />
+        {formLayout === 'original' ? (
+          <Form 
+            ref={formRef} 
+            showEditButton={true} 
+            onLayoutChange={handleLayoutChange}
+            currentLayout={formLayout}
+          />
+        ) : (
+          <MultiStepForm 
+            ref={multiStepFormRef} 
+            showEditButton={true} 
+            onLayoutChange={handleLayoutChange}
+            currentLayout={formLayout}
+          />
+        )}
       </main>
     </div>
   );
