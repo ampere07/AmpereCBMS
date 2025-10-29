@@ -5,10 +5,11 @@ use App\Http\Controllers\GeographicController;
 use App\Http\Controllers\PlanController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FormUIController;
+use App\Http\Controllers\PromoController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Http\Controllers\PromoController;
 
 // Authentication Routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -18,6 +19,10 @@ Route::get('/user', [AuthController::class, 'user']);
 // Dashboard Routes (Protected)
 Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
 Route::get('/dashboard/recent-applications', [DashboardController::class, 'recentApplications']);
+
+// Form UI Settings Routes
+Route::get('/form-ui/settings', [FormUIController::class, 'getSettings']);
+Route::post('/form-ui/settings', [FormUIController::class, 'updateSettings']);
 
 Route::post('/application/store', [ApplicationController::class, 'store']);
 

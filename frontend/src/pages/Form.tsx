@@ -86,10 +86,42 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [formBgColor, setFormBgColor] = useState('');
   
   useEffect(() => {
-    const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-    const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-    if (savedBgColor) setBackgroundColor(savedBgColor);
-    if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+    const fetchUISettings = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            if (result.data.page_hex) {
+              setBackgroundColor(result.data.page_hex);
+            } else {
+              const savedBgColor = localStorage.getItem('formPageBackgroundColor');
+              if (savedBgColor) setBackgroundColor(savedBgColor);
+            }
+            
+            if (result.data.form_hex) {
+              setFormBgColor(result.data.form_hex);
+            } else {
+              const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
+              if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+            }
+          }
+        } else {
+          const savedBgColor = localStorage.getItem('formPageBackgroundColor');
+          const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
+          if (savedBgColor) setBackgroundColor(savedBgColor);
+          if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+        }
+      } catch (error) {
+        console.error('Error fetching UI settings:', error);
+        const savedBgColor = localStorage.getItem('formPageBackgroundColor');
+        const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
+        if (savedBgColor) setBackgroundColor(savedBgColor);
+        if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+      }
+    };
+    
+    fetchUISettings();
   }, []);
   
   const [regions, setRegions] = useState<Region[]>([]);
@@ -109,16 +141,42 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     }
   };
 
-  const handleSaveColors = () => {
-    if (backgroundColor) {
-      localStorage.setItem('formPageBackgroundColor', backgroundColor);
-    }
-    if (formBgColor) {
-      localStorage.setItem('formContainerBackgroundColor', formBgColor);
-    }
-    alert('Colors saved successfully!');
-    if (onEditModeChange) {
-      onEditModeChange(false);
+  const handleSaveColors = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          page_hex: backgroundColor || null,
+          form_hex: formBgColor || null
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          if (backgroundColor) {
+            localStorage.setItem('formPageBackgroundColor', backgroundColor);
+          }
+          if (formBgColor) {
+            localStorage.setItem('formContainerBackgroundColor', formBgColor);
+          }
+          alert('Colors saved successfully!');
+          if (onEditModeChange) {
+            onEditModeChange(false);
+          }
+        } else {
+          alert('Failed to save colors: ' + (result.message || 'Unknown error'));
+        }
+      } else {
+        alert('Failed to save colors to database');
+      }
+    } catch (error) {
+      console.error('Error saving colors:', error);
+      alert('Error saving colors. Please try again.');
     }
   };
 
