@@ -70,10 +70,10 @@ export interface FormRef {
 }
 
 interface FormProps {
-  formBackgroundColor?: string;
+  showEditButton?: boolean;
 }
 
-const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) => {
+const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -499,17 +499,23 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
   return (
     <div style={{ backgroundColor: backgroundColor || '#f3f4f6', minHeight: '100vh', padding: '2rem 0' }}>
       <div className="mx-auto max-w-4xl px-4">
-        {isEditMode && (
-          <div className="mb-6 bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Color Customization</h3>
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleEdit}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
+        <div className="shadow-md rounded-lg transition-colors p-4" style={{ backgroundColor: formBgColor || '#ffffff' }}>
+          <header className="pb-4 mb-6 border-b border-gray-200 flex justify-between items-center">
+            <h1 className="text-2xl font-bold" style={{ color: getTextColor() }}>Sync</h1>
+            {showEditButton && (
+              <button
+                onClick={handleEdit}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {isEditMode ? 'Cancel' : 'Edit'}
+              </button>
+            )}
+          </header>
+          
+          {isEditMode && (
+            <div className="mb-6 bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Color Customization</h3>
                 <button
                   onClick={handleSaveColors}
                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -517,73 +523,61 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   Save
                 </button>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Page Background Color
-                </label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    value={backgroundColor || '#f3f4f6'}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={backgroundColor || '#f3f4f6'}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    placeholder="#f3f4f6"
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Page Background Color
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="color"
+                      value={backgroundColor || '#f3f4f6'}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={backgroundColor || '#f3f4f6'}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      placeholder="#f3f4f6"
+                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Form Background Color
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="color"
+                      value={formBgColor || '#ffffff'}
+                      onChange={(e) => setFormBgColor(e.target.value)}
+                      className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={formBgColor || '#ffffff'}
+                      onChange={(e) => setFormBgColor(e.target.value)}
+                      placeholder="#ffffff"
+                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Form Background Color
-                </label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    value={formBgColor || '#ffffff'}
-                    onChange={(e) => setFormBgColor(e.target.value)}
-                    className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={formBgColor || '#ffffff'}
-                    onChange={(e) => setFormBgColor(e.target.value)}
-                    placeholder="#ffffff"
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
             </div>
-          </div>
-        )}
-        
-        <div className="shadow-md rounded-lg transition-colors p-4" style={{ backgroundColor: formBgColor || '#ffffff' }}>
-          <header className="pb-4 mb-6 border-b border-gray-200 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Sync</h1>
-            <button
-              onClick={handleEdit}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {isEditMode ? 'Cancel' : 'Edit'}
-            </button>
-          </header>
+          )}
       
       <main>
-        <h2 className="text-xl font-semibold mb-6 text-gray-800">Application Form</h2>
+        <h2 className="text-xl font-semibold mb-6" style={{ color: getTextColor() }}>Application Form</h2>
         
         <form onSubmit={handleSubmit}>
           <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Contact Information</h3>
+            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100" style={{ color: getTextColor() }}>Contact Information</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="email">
+                <label className="block font-medium mb-2" htmlFor="email" style={{ color: getLabelColor() }}>
                   Email <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -599,7 +593,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="mobile">
+                <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: getLabelColor() }}>
                   Mobile <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -613,11 +607,11 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   pattern="09[0-9]{9}"
                   className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
-                <small className="text-gray-500 text-sm">Format: 09********</small>
+                <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09********</small>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="firstName">
+                <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: getLabelColor() }}>
                   First Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -633,7 +627,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="lastName">
+                <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: getLabelColor() }}>
                   Last Name <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -649,7 +643,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="middleInitial">
+                <label className="block font-medium mb-2" htmlFor="middleInitial" style={{ color: getLabelColor() }}>
                   Middle Initial
                 </label>
                 <input
@@ -665,7 +659,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="secondaryMobile">
+                <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: getLabelColor() }}>
                   Secondary Mobile
                 </label>
                 <input
@@ -683,11 +677,11 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
           </section>
           
           <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Installation Address</h3>
+            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100" style={{ color: getTextColor() }}>Installation Address</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="region">
+                <label className="block font-medium mb-2" htmlFor="region" style={{ color: getLabelColor() }}>
                   Region <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -706,7 +700,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="city">
+                <label className="block font-medium mb-2" htmlFor="city" style={{ color: getLabelColor() }}>
                   City/Municipality <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -726,7 +720,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="barangay">
+                <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: getLabelColor() }}>
                   Barangay <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -746,7 +740,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="location">
+                <label className="block font-medium mb-2" htmlFor="location" style={{ color: getLabelColor() }}>
                   Location
                 </label>
                 <select
@@ -765,7 +759,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="completeLocation">
+                <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: getLabelColor() }}>
                   Complete Location <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -779,12 +773,12 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
                 />
                 {!fullLocationText && (
-                  <small className="text-gray-500 text-sm">This field will auto-populate based on your selections above</small>
+                  <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>This field will auto-populate based on your selections above</small>
                 )}
               </div>
               
               <div className="col-span-1 md:col-span-2 mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="installationAddress">
+                <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: getLabelColor() }}>
                   Installation Address <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -800,7 +794,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="landmark">
+                <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: getLabelColor() }}>
                   Landmark <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -816,7 +810,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark1Image">
+                <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: getLabelColor() }}>
                   Nearest Landmark #1 Image <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
@@ -832,14 +826,14 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   <label htmlFor="nearestLandmark1Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                     Choose Image
                   </label>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                     {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
                   </span>
                 </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark2Image">
+                <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: getLabelColor() }}>
                   Nearest Landmark #2 Image <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
@@ -855,14 +849,14 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   <label htmlFor="nearestLandmark2Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                     Choose Image
                   </label>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                     {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
                   </span>
                 </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="referredBy">
+                <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
                   Referred By
                 </label>
                 <input
@@ -879,11 +873,11 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
           </section>
           
           <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Plan Selection</h3>
+            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100" style={{ color: getTextColor() }}>Plan Selection</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="plan">
+                <label className="block font-medium mb-2" htmlFor="plan" style={{ color: getLabelColor() }}>
                   Plan <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -904,7 +898,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="promo">
+                <label className="block font-medium mb-2" htmlFor="promo" style={{ color: getLabelColor() }}>
                   Promo
                 </label>
                 <select
@@ -926,20 +920,20 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   )}
                 </select>
                 {promos.length === 0 && (
-                  <small className="text-gray-500 text-sm">No active promos available</small>
+                  <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>No active promos available</small>
                 )}
               </div>
             </div>
           </section>
           
           <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Upload Documents</h3>
+            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100" style={{ color: getTextColor() }}>Upload Documents</h3>
             
-            <p className="mb-4 text-sm text-gray-600">Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
+            <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="proofOfBilling">
+                <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: getLabelColor() }}>
                   Proof of Billing <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
@@ -955,14 +949,14 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   <label htmlFor="proofOfBilling" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                     Choose File
                   </label>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                     {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
                   </span>
                 </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="governmentIdPrimary">
+                <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: getLabelColor() }}>
                   Government Valid ID (Primary) <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
@@ -978,14 +972,14 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   <label htmlFor="governmentIdPrimary" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                     Choose File
                   </label>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                     {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
                   </span>
                 </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="governmentIdSecondary">
+                <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: getLabelColor() }}>
                   Government Valid ID (Secondary)
                 </label>
                 <div className="flex items-center">
@@ -1000,14 +994,14 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   <label htmlFor="governmentIdSecondary" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                     Choose File
                   </label>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                     {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
                   </span>
                 </div>
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="houseFrontPicture">
+                <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: getLabelColor() }}>
                   House Front Picture <span className="text-red-500">*</span>
                 </label>
                 <div className="flex items-center">
@@ -1023,7 +1017,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                   <label htmlFor="houseFrontPicture" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                     Choose File
                   </label>
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                     {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
                   </span>
                 </div>
@@ -1031,7 +1025,7 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               
               {formData.promo && formData.promo !== '' && (
                 <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2" htmlFor="promoProof">
+                  <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: getLabelColor() }}>
                     Promo Proof Document <span className="text-red-500">*</span>
                   </label>
                   <div className="flex items-center">
@@ -1047,11 +1041,11 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
                     <label htmlFor="promoProof" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
                       Choose File
                     </label>
-                    <span className="ml-3 text-sm text-gray-600">
+                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                       {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
                     </span>
                   </div>
-                  <small className="text-gray-500 text-sm">Required when a promo is selected</small>
+                  <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Required when a promo is selected</small>
                 </div>
               )}
             </div>
@@ -1070,7 +1064,8 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
               />
               <label 
                 htmlFor="privacyAgreement" 
-                className="text-sm text-gray-700"
+                className="text-sm"
+                style={{ color: getLabelColor() }}
               >
                 I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies.
               </label>
@@ -1102,8 +1097,8 @@ const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) 
             <div className="flex items-center justify-center mb-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-            <p className="text-center text-gray-700 font-medium">Submitting your application...</p>
-            <p className="text-center text-gray-500 text-sm mt-2">Please wait while we process your form.</p>
+            <p className="text-center font-medium" style={{ color: getTextColor() }}>Submitting your application...</p>
+            <p className="text-center text-sm mt-2" style={{ color: getTextColor(), opacity: 0.7 }}>Please wait while we process your form.</p>
           </div>
         </div>
       )}

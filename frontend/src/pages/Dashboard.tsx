@@ -42,20 +42,12 @@ const Dashboard: React.FC = () => {
   });
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState('');
-  const [formBackgroundColor, setFormBackgroundColor] = useState('');
 
   useEffect(() => {
     const userData = localStorage.getItem('user_data');
     if (userData) {
       setUser(JSON.parse(userData));
     }
-
-    const savedBgColor = localStorage.getItem('pageBackgroundColor');
-    const savedFormBgColor = localStorage.getItem('formBackgroundColor');
-    if (savedBgColor) setBackgroundColor(savedBgColor);
-    if (savedFormBgColor) setFormBackgroundColor(savedFormBgColor);
 
     fetchDashboardData();
   }, []);
@@ -99,21 +91,6 @@ const Dashboard: React.FC = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
     window.location.href = '/login';
-  };
-
-  const handleEdit = () => {
-    setIsEditMode(!isEditMode);
-  };
-
-  const handleSaveColors = () => {
-    if (backgroundColor) {
-      localStorage.setItem('pageBackgroundColor', backgroundColor);
-    }
-    if (formBackgroundColor) {
-      localStorage.setItem('formBackgroundColor', formBackgroundColor);
-    }
-    alert('Colors saved successfully!');
-    setIsEditMode(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -175,56 +152,7 @@ const Dashboard: React.FC = () => {
       </nav>
 
       <main>
-        {isEditMode && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Color Customization</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Page Background Color
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={backgroundColor || '#f3f4f6'}
-                      onChange={(e) => setBackgroundColor(e.target.value)}
-                      className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={backgroundColor || '#f3f4f6'}
-                      onChange={(e) => setBackgroundColor(e.target.value)}
-                      placeholder="#f3f4f6"
-                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Form Background Color
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={formBackgroundColor || '#ffffff'}
-                      onChange={(e) => setFormBackgroundColor(e.target.value)}
-                      className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={formBackgroundColor || '#ffffff'}
-                      onChange={(e) => setFormBackgroundColor(e.target.value)}
-                      placeholder="#ffffff"
-                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        <Form ref={formRef} />
+        <Form ref={formRef} showEditButton={true} />
       </main>
     </div>
   );
