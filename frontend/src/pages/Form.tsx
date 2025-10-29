@@ -73,13 +73,15 @@ interface FormProps {
   showEditButton?: boolean;
   onLayoutChange?: (layout: 'original' | 'multistep') => void;
   currentLayout?: 'original' | 'multistep';
+  isEditMode?: boolean;
+  onEditModeChange?: (isEdit: boolean) => void;
 }
 
-const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original' }, ref) => {
+const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original', isEditMode: externalIsEditMode, onEditModeChange }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
   
@@ -102,7 +104,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   }));
 
   const handleEdit = () => {
-    setIsEditMode(!isEditMode);
+    if (onEditModeChange) {
+      onEditModeChange(!isEditMode);
+    }
   };
 
   const handleSaveColors = () => {
@@ -113,7 +117,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       localStorage.setItem('formContainerBackgroundColor', formBgColor);
     }
     alert('Colors saved successfully!');
-    setIsEditMode(false);
+    if (onEditModeChange) {
+      onEditModeChange(false);
+    }
   };
 
   const isColorDark = (color: string): boolean => {

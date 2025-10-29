@@ -72,14 +72,16 @@ interface MultiStepFormProps {
   showEditButton?: boolean;
   onLayoutChange?: (layout: 'original' | 'multistep') => void;
   currentLayout?: 'original' | 'multistep';
+  isEditMode?: boolean;
+  onEditModeChange?: (isEdit: boolean) => void;
 }
 
-const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'multistep' }, ref) => {
+const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'multistep', isEditMode: externalIsEditMode, onEditModeChange }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
+  const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
   
@@ -91,7 +93,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   }, []);
 
   const handleEdit = () => {
-    setIsEditMode(!isEditMode);
+    if (onEditModeChange) {
+      onEditModeChange(!isEditMode);
+    }
   };
 
   const handleSaveColors = () => {
@@ -102,7 +106,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       localStorage.setItem('formContainerBackgroundColor', formBgColor);
     }
     alert('Colors saved successfully!');
-    setIsEditMode(false);
+    if (onEditModeChange) {
+      onEditModeChange(false);
+    }
   };
   
   const [regions, setRegions] = useState<Region[]>([]);

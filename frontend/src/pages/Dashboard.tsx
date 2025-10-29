@@ -45,6 +45,7 @@ const Dashboard: React.FC = () => {
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formLayout, setFormLayout] = useState<'original' | 'multistep'>('original');
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user_data');
@@ -171,6 +172,8 @@ const Dashboard: React.FC = () => {
             showEditButton={true} 
             onLayoutChange={handleLayoutChange}
             currentLayout={formLayout}
+            isEditMode={isEditMode}
+            onEditModeChange={setIsEditMode}
           />
         ) : (
           <MultiStepForm 
@@ -178,6 +181,8 @@ const Dashboard: React.FC = () => {
             showEditButton={true} 
             onLayoutChange={handleLayoutChange}
             currentLayout={formLayout}
+            isEditMode={isEditMode}
+            onEditModeChange={setIsEditMode}
           />
         )}
       </main>
