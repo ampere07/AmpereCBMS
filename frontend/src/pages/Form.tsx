@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import API_CONFIG from '../config/api';
 
 interface Region {
@@ -31,8 +31,6 @@ interface Plan {
   description?: string;
   price: number;
 }
-
-
 
 interface FormState {
   email: string;
@@ -67,10 +65,28 @@ interface Promo {
   status: string;
 }
 
-const Form: React.FC = () => {
+export interface FormRef {
+  saveColors: () => void;
+}
+
+interface FormProps {
+  formBackgroundColor?: string;
+}
+
+const Form = forwardRef<FormRef, FormProps>(({ formBackgroundColor = '' }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState('');
+  const [formBgColor, setFormBgColor] = useState('');
+  
+  useEffect(() => {
+    const savedBgColor = localStorage.getItem('formPageBackgroundColor');
+    const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
+    if (savedBgColor) setBackgroundColor(savedBgColor);
+    if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+  }, []);
   
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -78,6 +94,47 @@ const Form: React.FC = () => {
   const [villages, setVillages] = useState<Village[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promos, setPromos] = useState<Promo[]>([]);
+
+  useImperativeHandle(ref, () => ({
+    saveColors: () => {}
+  }));
+
+  const handleEdit = () => {
+    setIsEditMode(!isEditMode);
+  };
+
+  const handleSaveColors = () => {
+    if (backgroundColor) {
+      localStorage.setItem('formPageBackgroundColor', backgroundColor);
+    }
+    if (formBgColor) {
+      localStorage.setItem('formContainerBackgroundColor', formBgColor);
+    }
+    alert('Colors saved successfully!');
+    setIsEditMode(false);
+  };
+
+  const isColorDark = (color: string): boolean => {
+    if (!color) return false;
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  };
+
+  const getTextColor = (): string => {
+    return isColorDark(formBgColor) ? '#FFFFFF' : '#1F2937';
+  };
+
+  const getLabelColor = (): string => {
+    return isColorDark(formBgColor) ? '#E5E7EB' : '#374151';
+  };
+
+  const getBorderColor = (): string => {
+    return isColorDark(formBgColor) ? '#4B5563' : '#E5E7EB';
+  };
 
   const [formData, setFormData] = useState<FormState>({
     email: '',
@@ -105,44 +162,42 @@ const Form: React.FC = () => {
     promoProof: null,
     privacyAgreement: false
   });
-  
 
-useEffect(() => {
-  const fetchRegions = async () => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/region`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch region');
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/region`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch region');
+        }
+        const data = await response.json();
+        setRegions(data.regions || []);
+      } catch (error) {
+        console.error('Error fetching regions:', error);
+        setRegions([]);
       }
-      const data = await response.json();
-      setRegions(data.regions || []);
-    } catch (error) {
-      console.error('Error fetching regions:', error);
-      setRegions([]);
-    }
-  };
+    };
 
-  fetchRegions();
-}, []);
+    fetchRegions();
+  }, []);
 
-useEffect(() => {
-  const fetchPlans = async () => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/plans`); // ✅ FIXED HERE
-      if (!response.ok) {
-        throw new Error('Failed to fetch plans');
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/plans`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch plans');
+        }
+        const data = await response.json();
+        setPlans(data.data || []);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+        setPlans([]);
       }
-      const data = await response.json();
-      setPlans(data.data || []);
-    } catch (error) {
-      console.error('Error fetching plans:', error);
-      setPlans([]);
-    }
-  };
+    };
 
-  fetchPlans();
-}, []);
-
+    fetchPlans();
+  }, []);
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -175,26 +230,22 @@ useEffect(() => {
   }, [formData.region]);
 
   useEffect(() => {
-  const fetchPromos = async () => {
-    try {
-      console.log('Fetching promos from:', `${apiBaseUrl}/api/promo_list`);
-      const response = await fetch(`${apiBaseUrl}/api/promo_list`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch promos');
+    const fetchPromos = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/promo_list`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch promos');
+        }
+        const data = await response.json();
+        setPromos(data.data || []);
+      } catch (error) {
+        console.error('Error fetching promos:', error);
+        setPromos([]);
       }
-      const data = await response.json();
-      console.log('Promos fetched successfully:', data);
-      setPromos(data.data || []);
-    } catch (error) {
-      console.error('Error fetching promos:', error);
-      setPromos([]);
-    }
-  };
+    };
 
-  fetchPromos();
-}, []);
-
+    fetchPromos();
+  }, []);
 
   useEffect(() => {
     const fetchBarangays = async () => {
@@ -252,7 +303,6 @@ useEffect(() => {
     fetchVillages();
   }, [formData.barangay]);
 
-  // Track full location text
   const [fullLocationText, setFullLocationText] = useState<string>('');
 
   useEffect(() => {
@@ -309,7 +359,6 @@ useEffect(() => {
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.checked });
-    console.log('Privacy agreement:', e.target.checked);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -320,10 +369,8 @@ useEffect(() => {
       return;
     }
     
-    // Create FormData object for file uploads
     const submissionData = new FormData();
     
-    // Add form fields to FormData in a format matching the updated API
     submissionData.append('firstName', formData.firstName);
     submissionData.append('middleInitial', formData.middleInitial);
     submissionData.append('lastName', formData.lastName);
@@ -344,12 +391,9 @@ useEffect(() => {
     submissionData.append('landmark', formData.landmark);
     submissionData.append('referredBy', formData.referredBy);
     
-    // Add plan information
     submissionData.append('plan', formData.plan);
     submissionData.append('promo', formData.promo || '');
     
-    // Also append document files directly to the application submission
-    // This way they are stored in the correct fields in the database
     if (formData.proofOfBilling) {
       submissionData.append('proofOfBilling', formData.proofOfBilling);
     }
@@ -381,10 +425,6 @@ useEffect(() => {
     try {
       setIsSubmitting(true);
       
-
-      
-      // No need for CSRF token with the updated API
-      
       const response = await fetch(`${apiBaseUrl}/api/application/store`, {
         method: 'POST',
         body: submissionData,
@@ -397,7 +437,6 @@ useEffect(() => {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Validation errors:', errorData);
-        // Display specific validation errors if available
         if (errorData.errors) {
           const errorMessages = Object.values(errorData.errors).flat();
           throw new Error(errorMessages.join('\n'));
@@ -413,12 +452,10 @@ useEffect(() => {
       console.error('Error submitting form:', error);
       let errorMessage = 'Failed to submit application. Please try again.';
       
-      // Check if it's a specific error with a message
       if (error instanceof Error) {
         errorMessage = error.message;
       }
       
-      // Show a more user-friendly alert
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -426,7 +463,6 @@ useEffect(() => {
   };
 
   const handleReset = () => {
-    // Reset form fields including file inputs
     setFormData({
       email: '',
       mobile: '',
@@ -454,7 +490,6 @@ useEffect(() => {
       privacyAgreement: false
     });
     
-    // Reset file input elements
     const fileInputs = document.querySelectorAll('input[type="file"]');
     fileInputs.forEach((input) => {
       (input as HTMLInputElement).value = '';
@@ -462,16 +497,87 @@ useEffect(() => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-4 bg-white shadow-md rounded-lg">
-      <header className="border-b border-gray-200 pb-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Sync</h1>
-      </header>
+    <div style={{ backgroundColor: backgroundColor || '#f3f4f6', minHeight: '100vh', padding: '2rem 0' }}>
+      <div className="mx-auto max-w-4xl px-4">
+        {isEditMode && (
+          <div className="mb-6 bg-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Color Customization</h3>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleEdit}
+                  className="px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveColors}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Page Background Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={backgroundColor || '#f3f4f6'}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={backgroundColor || '#f3f4f6'}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    placeholder="#f3f4f6"
+                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Form Background Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={formBgColor || '#ffffff'}
+                    onChange={(e) => setFormBgColor(e.target.value)}
+                    className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formBgColor || '#ffffff'}
+                    onChange={(e) => setFormBgColor(e.target.value)}
+                    placeholder="#ffffff"
+                    className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="shadow-md rounded-lg transition-colors p-4" style={{ backgroundColor: formBgColor || '#ffffff' }}>
+          <header className="pb-4 mb-6 border-b border-gray-200 flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-900">Sync</h1>
+            <button
+              onClick={handleEdit}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {isEditMode ? 'Cancel' : 'Edit'}
+            </button>
+          </header>
       
       <main>
         <h2 className="text-xl font-semibold mb-6 text-gray-800">Application Form</h2>
         
         <form onSubmit={handleSubmit}>
-          {/* Contact Information Section */}
           <section className="mb-8">
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Contact Information</h3>
             
@@ -576,7 +682,6 @@ useEffect(() => {
             </div>
           </section>
           
-          {/* Installation Address Section */}
           <section className="mb-8">
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Installation Address</h3>
             
@@ -773,7 +878,6 @@ useEffect(() => {
             </div>
           </section>
           
-          {/* Plan Selection Section */}
           <section className="mb-8">
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Plan Selection</h3>
             
@@ -793,9 +897,8 @@ useEffect(() => {
                   <option value="">Select plan</option>
                   {plans && plans.length > 0 && plans.map(plan => (
                     <option key={plan.id} value={plan.id}>
-  {plan.plan_name} - ₱{plan.price.toLocaleString()}
-</option>
-
+                      {plan.plan_name} - ₱{plan.price.toLocaleString()}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -829,7 +932,6 @@ useEffect(() => {
             </div>
           </section>
           
-          {/* Upload Documents Section */}
           <section className="mb-8">
             <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Upload Documents</h3>
             
@@ -955,7 +1057,6 @@ useEffect(() => {
             </div>
           </section>
           
-          {/* Privacy Agreement */}
           <section className="mb-8">
             <div className="flex items-center mb-4">
               <input
@@ -976,7 +1077,6 @@ useEffect(() => {
             </div>
           </section>
           
-          {/* Form Actions */}
           <div className="flex justify-end space-x-4">
             <button 
               type="button" 
@@ -996,7 +1096,6 @@ useEffect(() => {
         </form>
       </main>
       
-      {/* Loading Modal */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
@@ -1009,7 +1108,6 @@ useEffect(() => {
         </div>
       )}
 
-      {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -1037,7 +1135,9 @@ useEffect(() => {
         </div>
       )}
     </div>
+      </div>
+    </div>
   );
-};
+});
 
 export default Form;

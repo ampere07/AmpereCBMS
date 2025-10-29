@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Form, { FormRef } from './Form';
 
 interface User {
   id: number;
@@ -31,6 +32,7 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
+  const formRef = useRef<FormRef>(null);
   const [user, setUser] = useState<User | null>(null);
   const [stats, setStats] = useState<DashboardStats>({
     total_applications: 0,
@@ -40,12 +42,20 @@ const Dashboard: React.FC = () => {
   });
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [backgroundColor, setBackgroundColor] = useState('');
+  const [formBackgroundColor, setFormBackgroundColor] = useState('');
 
   useEffect(() => {
     const userData = localStorage.getItem('user_data');
     if (userData) {
       setUser(JSON.parse(userData));
     }
+
+    const savedBgColor = localStorage.getItem('pageBackgroundColor');
+    const savedFormBgColor = localStorage.getItem('formBackgroundColor');
+    if (savedBgColor) setBackgroundColor(savedBgColor);
+    if (savedFormBgColor) setFormBackgroundColor(savedFormBgColor);
 
     fetchDashboardData();
   }, []);
@@ -91,6 +101,21 @@ const Dashboard: React.FC = () => {
     window.location.href = '/login';
   };
 
+  const handleEdit = () => {
+    setIsEditMode(!isEditMode);
+  };
+
+  const handleSaveColors = () => {
+    if (backgroundColor) {
+      localStorage.setItem('pageBackgroundColor', backgroundColor);
+    }
+    if (formBackgroundColor) {
+      localStorage.setItem('formBackgroundColor', formBackgroundColor);
+    }
+    alert('Colors saved successfully!');
+    setIsEditMode(false);
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -127,7 +152,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: '#f3f4f6' }}>
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -149,147 +174,57 @@ const Dashboard: React.FC = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-gray-600 mt-1">Overview of application submissions</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Applications</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total_applications}</p>
-              </div>
-              <div className="bg-blue-100 rounded-full p-3">
-                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending_applications}</p>
-              </div>
-              <div className="bg-yellow-100 rounded-full p-3">
-                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Approved</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">{stats.approved_applications}</p>
-              </div>
-              <div className="bg-green-100 rounded-full p-3">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Rejected</p>
-                <p className="text-3xl font-bold text-red-600 mt-2">{stats.rejected_applications}</p>
-              </div>
-              <div className="bg-red-100 rounded-full p-3">
-                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
+      <main>
+        {isEditMode && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Color Customization</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Page Background Color
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="color"
+                      value={backgroundColor || '#f3f4f6'}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={backgroundColor || '#f3f4f6'}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      placeholder="#f3f4f6"
+                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Form Background Color
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="color"
+                      value={formBackgroundColor || '#ffffff'}
+                      onChange={(e) => setFormBackgroundColor(e.target.value)}
+                      className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={formBackgroundColor || '#ffffff'}
+                      onChange={(e) => setFormBackgroundColor(e.target.value)}
+                      placeholder="#ffffff"
+                      className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Applications</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Application ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Mobile
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Plan
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Submitted
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentApplications.length > 0 ? (
-                  recentApplications.map((application) => (
-                    <tr key={application.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {application.application_id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {application.first_name} {application.last_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {application.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {application.mobile}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {application.city}, {application.region}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {application.plan}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(application.status)}`}>
-                          {application.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {formatDate(application.created_at)}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500">
-                      No applications found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        )}
+        <Form ref={formRef} />
       </main>
     </div>
   );
