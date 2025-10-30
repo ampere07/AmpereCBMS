@@ -84,6 +84,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
+  const [buttonColor, setButtonColor] = useState('#3B82F6');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
   
   useEffect(() => {
     const fetchUISettings = async () => {
@@ -104,6 +107,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             } else {
               const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
               if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+            }
+            
+            if (result.data.logo) {
+              setLogoPreview(`${apiBaseUrl}/storage/${result.data.logo}`);
             }
           }
         } else {
@@ -130,18 +137,38 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     }
   };
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSaveColors = async () => {
     try {
+      const formData = new FormData();
+      
+      if (backgroundColor) {
+        formData.append('page_hex', backgroundColor);
+      }
+      if (formBgColor) {
+        formData.append('form_hex', formBgColor);
+      }
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+      
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          page_hex: backgroundColor || null,
-          form_hex: formBgColor || null
-        })
+        body: formData
       });
       
       if (response.ok) {
@@ -167,6 +194,28 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       console.error('Error saving colors:', error);
       alert('Error saving colors. Please try again.');
     }
+  };
+
+  const isColorDark = (color: string): boolean => {
+    if (!color) return false;
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  };
+
+  const getTextColor = (): string => {
+    return isColorDark(formBgColor) ? '#FFFFFF' : '#1F2937';
+  };
+
+  const getLabelColor = (): string => {
+    return isColorDark(formBgColor) ? '#E5E7EB' : '#374151';
+  };
+
+  const getBorderColor = (): string => {
+    return isColorDark(formBgColor) ? '#4B5563' : '#E5E7EB';
   };
   
   const [regions, setRegions] = useState<Region[]>([]);
@@ -542,17 +591,18 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           <div key={step} className="flex items-center flex-1">
             <div className="flex flex-col items-center flex-1">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-                  currentStep >= step
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-600'
-                }`}
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors`}
+                style={{
+                  backgroundColor: currentStep >= step ? buttonColor : (isColorDark(formBgColor) ? '#374151' : '#E5E7EB'),
+                  color: currentStep >= step ? '#FFFFFF' : (isColorDark(formBgColor) ? '#9CA3AF' : '#6B7280')
+                }}
               >
                 {step}
               </div>
-              <div className={`mt-2 text-sm font-medium ${
-                currentStep >= step ? 'text-blue-600' : 'text-gray-500'
-              }`}>
+              <div 
+                className="mt-2 text-sm font-medium"
+                style={{ color: currentStep >= step ? buttonColor : getLabelColor() }}
+              >
                 {step === 1 && 'Contact Info'}
                 {step === 2 && 'Installation Address'}
                 {step === 3 && 'Plan & Documents'}
@@ -560,9 +610,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             </div>
             {step < 3 && (
               <div
-                className={`h-1 flex-1 mx-2 transition-colors ${
-                  currentStep > step ? 'bg-blue-600' : 'bg-gray-200'
-                }`}
+                className="h-1 flex-1 mx-2 transition-colors"
+                style={{
+                  backgroundColor: currentStep > step ? buttonColor : (isColorDark(formBgColor) ? '#374151' : '#E5E7EB')
+                }}
               />
             )}
           </div>
@@ -573,11 +624,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const renderContactInformation = () => (
     <section>
-      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100 text-gray-900">Contact Information</h3>
+      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Contact Information</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="email">
+          <label className="block font-medium mb-2" htmlFor="email" style={{ color: getLabelColor() }}>
             Email <span className="text-red-500">*</span>
           </label>
           <input
@@ -588,12 +639,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required
             placeholder="Enter your email address"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="mobile">
+          <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: getLabelColor() }}>
             Mobile <span className="text-red-500">*</span>
           </label>
           <input
@@ -605,13 +661,18 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             required
             placeholder="09********"
             pattern="09[0-9]{9}"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
-          <small className="text-sm text-gray-600">Format: 09********</small>
+          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09********</small>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="firstName">
+          <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: getLabelColor() }}>
             First Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -622,12 +683,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required
             placeholder="Enter your first name"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="lastName">
+          <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: getLabelColor() }}>
             Last Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -638,12 +704,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required
             placeholder="Enter your last name"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="middleInitial">
+          <label className="block font-medium mb-2" htmlFor="middleInitial" style={{ color: getLabelColor() }}>
             Middle Initial
           </label>
           <input
@@ -654,12 +725,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             maxLength={1}
             placeholder="M"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="secondaryMobile">
+          <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: getLabelColor() }}>
             Secondary Mobile
           </label>
           <input
@@ -670,7 +746,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             placeholder="09********"
             pattern="09[0-9]{9}"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
       </div>
@@ -679,11 +760,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const renderInstallationAddress = () => (
     <section>
-      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100 text-gray-900">Installation Address</h3>
+      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Installation Address</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="region">
+          <label className="block font-medium mb-2" htmlFor="region" style={{ color: getLabelColor() }}>
             Region <span className="text-red-500">*</span>
           </label>
           <select
@@ -692,7 +773,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.region}
             onChange={handleInputChange}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           >
             <option value="">Select region</option>
             {regions.map(region => (
@@ -702,7 +788,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="city">
+          <label className="block font-medium mb-2" htmlFor="city" style={{ color: getLabelColor() }}>
             City/Municipality <span className="text-red-500">*</span>
           </label>
           <select
@@ -712,7 +798,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required
             disabled={!formData.region}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           >
             <option value="">Select city/municipality</option>
             {cities.map(city => (
@@ -722,7 +813,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="barangay">
+          <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: getLabelColor() }}>
             Barangay <span className="text-red-500">*</span>
           </label>
           <select
@@ -732,7 +823,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required
             disabled={!formData.city}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           >
             <option value="">Select barangay</option>
             {barangays.map(barangay => (
@@ -742,7 +838,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="location">
+          <label className="block font-medium mb-2" htmlFor="location" style={{ color: getLabelColor() }}>
             Location
           </label>
           <select
@@ -751,7 +847,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.location}
             onChange={handleInputChange}
             disabled={!formData.barangay}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           >
             <option value="">Select location</option>
             {villages.map(village => (
@@ -761,7 +862,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="completeLocation">
+          <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: getLabelColor() }}>
             Complete Location <span className="text-red-500">*</span>
           </label>
           <input
@@ -772,15 +873,20 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             readOnly
             required
             placeholder="Select region, city, barangay, and location above"
-            className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
+            className="w-full border rounded px-3 py-2"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#0a0a0a' : '#f9fafb',
+              color: getTextColor()
+            }}
           />
           {!fullLocationText && (
-            <small className="text-sm text-gray-600">This field will auto-populate based on your selections above</small>
+            <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>This field will auto-populate based on your selections above</small>
           )}
         </div>
         
         <div className="col-span-1 md:col-span-2 mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="installationAddress">
+          <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: getLabelColor() }}>
             Installation Address <span className="text-red-500">*</span>
           </label>
           <textarea
@@ -791,12 +897,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             required
             placeholder="Enter complete address details"
             rows={3}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           ></textarea>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="landmark">
+          <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: getLabelColor() }}>
             Landmark <span className="text-red-500">*</span>
           </label>
           <input
@@ -807,12 +918,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required
             placeholder="Enter a landmark"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="nearestLandmark1Image">
+          <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: getLabelColor() }}>
             Nearest Landmark #1 Image <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center">
@@ -825,17 +941,25 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               accept=".jpg,.jpeg,.png"
               className="hidden"
             />
-            <label htmlFor="nearestLandmark1Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            <label 
+              htmlFor="nearestLandmark1Image" 
+              className="cursor-pointer border rounded px-3 py-2 text-sm"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            >
               Choose Image
             </label>
-            <span className="ml-3 text-sm text-gray-700">
+            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
               {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
             </span>
           </div>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="nearestLandmark2Image">
+          <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: getLabelColor() }}>
             Nearest Landmark #2 Image <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center">
@@ -848,17 +972,25 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               accept=".jpg,.jpeg,.png"
               className="hidden"
             />
-            <label htmlFor="nearestLandmark2Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            <label 
+              htmlFor="nearestLandmark2Image" 
+              className="cursor-pointer border rounded px-3 py-2 text-sm"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            >
               Choose Image
             </label>
-            <span className="ml-3 text-sm text-gray-700">
+            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
               {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
             </span>
           </div>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="referredBy">
+          <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
             Referred By
           </label>
           <input
@@ -868,7 +1000,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.referredBy}
             onChange={handleInputChange}
             placeholder="Enter referrer name (optional)"
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           />
         </div>
       </div>
@@ -877,11 +1014,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const renderPlanAndDocuments = () => (
     <section>
-      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100 text-gray-900">Plan Selection</h3>
+      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Plan Selection</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="plan">
+          <label className="block font-medium mb-2" htmlFor="plan" style={{ color: getLabelColor() }}>
             Plan <span className="text-red-500">*</span>
           </label>
           <select
@@ -890,7 +1027,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.plan}
             onChange={handleInputChange}
             required
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           >
             <option value="">Select plan</option>
             {plans.map(plan => (
@@ -902,7 +1044,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="promo">
+          <label className="block font-medium mb-2" htmlFor="promo" style={{ color: getLabelColor() }}>
             Promo
           </label>
           <select
@@ -910,7 +1052,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             name="promo"
             value={formData.promo}
             onChange={handleInputChange}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
           >
             <option value="">None</option>
             {promos.map(promo => (
@@ -920,18 +1067,18 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             ))}
           </select>
           {promos.length === 0 && (
-            <small className="text-sm text-gray-600">No active promos available</small>
+            <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>No active promos available</small>
           )}
         </div>
       </div>
       
-      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100 text-gray-900">Upload Documents</h3>
+      <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Upload Documents</h3>
       
-      <p className="mb-4 text-sm text-gray-700">Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
+      <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="proofOfBilling">
+          <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: getLabelColor() }}>
             Proof of Billing <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center">
@@ -944,17 +1091,25 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               accept=".jpg,.jpeg,.png,.pdf"
               className="hidden"
             />
-            <label htmlFor="proofOfBilling" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            <label 
+              htmlFor="proofOfBilling" 
+              className="cursor-pointer border rounded px-3 py-2 text-sm"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            >
               Choose File
             </label>
-            <span className="ml-3 text-sm text-gray-700">
+            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
               {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
             </span>
           </div>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="governmentIdPrimary">
+          <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: getLabelColor() }}>
             Government Valid ID (Primary) <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center">
@@ -967,17 +1122,25 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               accept=".jpg,.jpeg,.png,.pdf"
               className="hidden"
             />
-            <label htmlFor="governmentIdPrimary" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            <label 
+              htmlFor="governmentIdPrimary" 
+              className="cursor-pointer border rounded px-3 py-2 text-sm"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            >
               Choose File
             </label>
-            <span className="ml-3 text-sm text-gray-700">
+            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
               {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
             </span>
           </div>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="governmentIdSecondary">
+          <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: getLabelColor() }}>
             Government Valid ID (Secondary)
           </label>
           <div className="flex items-center">
@@ -989,17 +1152,25 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               accept=".jpg,.jpeg,.png,.pdf"
               className="hidden"
             />
-            <label htmlFor="governmentIdSecondary" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            <label 
+              htmlFor="governmentIdSecondary" 
+              className="cursor-pointer border rounded px-3 py-2 text-sm"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            >
               Choose File
             </label>
-            <span className="ml-3 text-sm text-gray-700">
+            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
               {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
             </span>
           </div>
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2 text-gray-700" htmlFor="houseFrontPicture">
+          <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: getLabelColor() }}>
             House Front Picture <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center">
@@ -1012,10 +1183,18 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               accept=".jpg,.jpeg,.png"
               className="hidden"
             />
-            <label htmlFor="houseFrontPicture" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+            <label 
+              htmlFor="houseFrontPicture" 
+              className="cursor-pointer border rounded px-3 py-2 text-sm"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            >
               Choose File
             </label>
-            <span className="ml-3 text-sm text-gray-700">
+            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
               {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
             </span>
           </div>
@@ -1023,7 +1202,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         
         {formData.promo && formData.promo !== '' && (
           <div className="mb-4">
-            <label className="block font-medium mb-2 text-gray-700" htmlFor="promoProof">
+            <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: getLabelColor() }}>
               Promo Proof Document <span className="text-red-500">*</span>
             </label>
             <div className="flex items-center">
@@ -1036,14 +1215,22 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 accept=".jpg,.jpeg,.png,.pdf"
                 className="hidden"
               />
-              <label htmlFor="promoProof" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+              <label 
+                htmlFor="promoProof" 
+                className="cursor-pointer border rounded px-3 py-2 text-sm"
+                style={{ 
+                  borderColor: getBorderColor(),
+                  backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                  color: getTextColor()
+                }}
+              >
                 Choose File
               </label>
-              <span className="ml-3 text-sm text-gray-700">
+              <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
                 {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
               </span>
             </div>
-            <small className="text-sm text-gray-600">Required when a promo is selected</small>
+            <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Required when a promo is selected</small>
           </div>
         )}
       </div>
@@ -1059,7 +1246,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             required
             className="mr-2 h-4 w-4"
           />
-          <label htmlFor="privacyAgreement" className="text-sm text-gray-700">
+          <label htmlFor="privacyAgreement" className="text-sm" style={{ color: getLabelColor() }}>
             I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies. <span className="text-red-500">*</span>
           </label>
         </div>
@@ -1068,11 +1255,164 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   );
 
   return (
-    <div style={{ backgroundColor: backgroundColor || '#f3f4f6', minHeight: '100vh', padding: '2rem 0' }}>
+    <div style={{ backgroundColor: backgroundColor || '#1a1a1a', minHeight: '100vh', padding: '2rem 0' }}>
       <div className="mx-auto max-w-4xl px-4">
-        <div className="shadow-md rounded-lg p-6" style={{ backgroundColor: formBgColor || '#ffffff' }}>
-          <header className="pb-4 mb-6 border-b border-gray-200 flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Application Form</h1>
+        {isEditMode && (
+          <div className="mb-6 border rounded-lg p-6" style={{ backgroundColor: 'transparent', borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#4B5563' }}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>Edit</h3>
+              <button
+                onClick={handleSaveColors}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                Save
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                  Upload Logo
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="w-full border bg-transparent rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  style={{
+                    borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB',
+                    color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937'
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                  Background Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={backgroundColor || '#1a1a1a'}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="h-10 w-20 rounded border cursor-pointer"
+                    style={{ borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB' }}
+                  />
+                  <input
+                    type="text"
+                    value={backgroundColor || '#1a1a1a'}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    placeholder="#1a1a1a"
+                    className="flex-1 border bg-transparent rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{
+                      borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB',
+                      color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                  Button Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="color"
+                    value={buttonColor}
+                    onChange={(e) => setButtonColor(e.target.value)}
+                    className="h-10 w-20 rounded border cursor-pointer"
+                    style={{ borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB' }}
+                  />
+                  <input
+                    type="text"
+                    value={buttonColor}
+                    onChange={(e) => setButtonColor(e.target.value)}
+                    placeholder="#3B82F6"
+                    className="flex-1 border bg-transparent rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{
+                      borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB',
+                      color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {onLayoutChange && (
+                <div>
+                  <label className="block text-sm font-medium mb-3" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                    Form Layout
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onLayoutChange('original')}
+                      className="p-3 border-2 rounded-lg text-left transition-all"
+                      style={{
+                        borderColor: currentLayout === 'original' ? buttonColor : (isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB'),
+                        backgroundColor: currentLayout === 'original' ? `${buttonColor}20` : 'transparent'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-sm" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>Original Layout</h4>
+                          <p className="text-xs mt-1" style={{ color: isColorDark(backgroundColor) ? '#D1D5DB' : '#6B7280' }}>
+                            Single-page form
+                          </p>
+                        </div>
+                        {currentLayout === 'original' && (
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" style={{ color: buttonColor }}>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => onLayoutChange('multistep')}
+                      className="p-3 border-2 rounded-lg text-left transition-all"
+                      style={{
+                        borderColor: currentLayout === 'multistep' ? buttonColor : (isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB'),
+                        backgroundColor: currentLayout === 'multistep' ? `${buttonColor}20` : 'transparent'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-sm" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>Multi-Step Layout</h4>
+                          <p className="text-xs mt-1" style={{ color: isColorDark(backgroundColor) ? '#D1D5DB' : '#6B7280' }}>
+                            Step-by-step form
+                          </p>
+                        </div>
+                        {currentLayout === 'multistep' && (
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" style={{ color: buttonColor }}>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        <div className="mb-6 flex justify-center items-center py-12" style={{ backgroundColor: 'transparent' }}>
+          {logoPreview ? (
+            <img src={logoPreview} alt="Logo" className="h-24 object-contain" />
+          ) : (
+            <div className="text-2xl font-bold" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>LOGO</div>
+          )}
+        </div>
+        
+        <div className="mb-6 text-center">
+          <p className="text-sm" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#6B7280' }}>Powered by SYNC</p>
+        </div>
+        
+        <div className="shadow-md rounded-lg p-8" style={{ backgroundColor: formBgColor || '#000000' }}>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold" style={{ color: getTextColor() }}>Application Form</h2>
             {showEditButton && (
               <button
                 onClick={handleEdit}
@@ -1081,122 +1421,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 {isEditMode ? 'Cancel' : 'Edit'}
               </button>
             )}
-          </header>
-          
-          {isEditMode && (
-            <div className="mb-6 bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Color Customization</h3>
-                <button
-                  onClick={handleSaveColors}
-                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  Save
-                </button>
-              </div>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Page Background Color
-                    </label>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="color"
-                        value={backgroundColor || '#f3f4f6'}
-                        onChange={(e) => setBackgroundColor(e.target.value)}
-                        className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={backgroundColor || '#f3f4f6'}
-                        onChange={(e) => setBackgroundColor(e.target.value)}
-                        placeholder="#f3f4f6"
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Form Background Color
-                    </label>
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="color"
-                        value={formBgColor || '#ffffff'}
-                        onChange={(e) => setFormBgColor(e.target.value)}
-                        className="h-10 w-20 rounded border border-gray-300 cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={formBgColor || '#ffffff'}
-                        onChange={(e) => setFormBgColor(e.target.value)}
-                        placeholder="#ffffff"
-                        className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                {onLayoutChange && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Form Layout
-                    </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => onLayoutChange('original')}
-                        className={`p-3 border-2 rounded-lg text-left transition-all ${
-                          currentLayout === 'original'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 text-sm">Original Layout</h4>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Single-page form
-                            </p>
-                          </div>
-                          {currentLayout === 'original' && (
-                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-                      
-                      <button
-                        type="button"
-                        onClick={() => onLayoutChange('multistep')}
-                        className={`p-3 border-2 rounded-lg text-left transition-all ${
-                          currentLayout === 'multistep'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold text-gray-900 text-sm">Multi-Step Layout</h4>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Step-by-step form
-                            </p>
-                          </div>
-                          {currentLayout === 'multistep' && (
-                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          </div>
           
           {renderStepIndicator()}
           
@@ -1204,46 +1429,63 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             {currentStep === 1 && renderContactInformation()}
             {currentStep === 2 && renderInstallationAddress()}
             {currentStep === 3 && renderPlanAndDocuments()}
+          </form>
+        </div>
+        
+        <div className="flex justify-between mt-6">
+          <button
+            type="button"
+            onClick={handlePrevious}
+            disabled={currentStep === 1}
+            className="px-6 py-2 border rounded hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              borderColor: buttonColor,
+              color: buttonColor,
+              backgroundColor: 'transparent'
+            }}
+          >
+            Back
+          </button>
+          
+          <div className="flex space-x-4">
+            <button 
+              type="button" 
+              className="px-6 py-2 border rounded hover:opacity-80"
+              style={{
+                borderColor: buttonColor,
+                color: buttonColor,
+                backgroundColor: 'transparent'
+              }}
+              onClick={handleReset}
+            >
+              Reset
+            </button>
             
-            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200">
+            {currentStep < 3 ? (
               <button
                 type="button"
-                onClick={handlePrevious}
-                disabled={currentStep === 1}
-                className="px-6 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleNext}
+                className="px-6 py-2 text-white rounded hover:opacity-90"
+                style={{
+                  backgroundColor: buttonColor
+                }}
               >
-                Previous
+                Next
               </button>
-              
-              <div className="flex space-x-4">
-                <button 
-                  type="button" 
-                  className="px-6 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100"
-                  onClick={handleReset}
-                >
-                  Reset
-                </button>
-                
-                {currentStep < 3 ? (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Next
-                  </button>
-                ) : (
-                  <button 
-                    type="submit" 
-                    className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-                    disabled={!formData.privacyAgreement || isSubmitting}
-                  >
-                    {isSubmitting ? 'Submitting...' : 'Submit'}
-                  </button>
-                )}
-              </div>
-            </div>
-          </form>
+            ) : (
+              <button 
+                type="button"
+                onClick={handleSubmit}
+                className="px-6 py-2 text-white rounded hover:opacity-90 disabled:opacity-50"
+                style={{
+                  backgroundColor: buttonColor
+                }}
+                disabled={!formData.privacyAgreement || isSubmitting}
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
       

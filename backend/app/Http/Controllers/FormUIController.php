@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class FormUIController extends Controller
 {
@@ -39,7 +40,7 @@ class FormUIController extends Controller
         $validator = Validator::make($request->all(), [
             'page_hex' => 'nullable|string|max:25',
             'form_hex' => 'nullable|string|max:25',
-            'logo' => 'nullable|string|max:255',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -62,8 +63,14 @@ class FormUIController extends Controller
             $updateData['form_hex'] = $request->input('form_hex');
         }
         
-        if ($request->has('logo')) {
-            $updateData['logo'] = $request->input('logo');
+        if ($request->hasFile('logo')) {
+            $settings = DB::table('form_ui')->first();
+            if ($settings && $settings->logo) {
+                Storage::disk('public')->delete($settings->logo);
+            }
+            
+            $logoPath = $request->file('logo')->store('logos', 'public');
+            $updateData['logo'] = $logoPath;
         }
 
         if (!$exists) {
