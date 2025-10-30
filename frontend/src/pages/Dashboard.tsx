@@ -174,6 +174,7 @@ const Dashboard: React.FC = () => {
             currentLayout={formLayout}
             isEditMode={isEditMode}
             onEditModeChange={setIsEditMode}
+            requireFields={false}
           />
         ) : (
           <MultiStepForm 
@@ -183,6 +184,7 @@ const Dashboard: React.FC = () => {
             currentLayout={formLayout}
             isEditMode={isEditMode}
             onEditModeChange={setIsEditMode}
+            requireFields={false}
           />
         )}
       </main>

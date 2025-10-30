@@ -75,9 +75,10 @@ interface FormProps {
   currentLayout?: 'original' | 'multistep';
   isEditMode?: boolean;
   onEditModeChange?: (isEdit: boolean) => void;
+  requireFields?: boolean;
 }
 
-const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original', isEditMode: externalIsEditMode, onEditModeChange }, ref) => {
+const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original', isEditMode: externalIsEditMode, onEditModeChange, requireFields = true }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -765,7 +766,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="email" style={{ color: getLabelColor() }}>
-                    Email <span className="text-red-500">*</span>
+                    Email {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="email"
@@ -773,7 +774,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     placeholder="Enter your email address"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
@@ -786,7 +787,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: getLabelColor() }}>
-                    Mobile <span className="text-red-500">*</span>
+                    Mobile {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="tel"
@@ -794,7 +795,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     name="mobile"
                     value={formData.mobile}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     placeholder="09********"
                     pattern="09[0-9]{9}"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -809,7 +810,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: getLabelColor() }}>
-                    First Name <span className="text-red-500">*</span>
+                    First Name {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="text"
@@ -817,7 +818,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     placeholder="Enter your first name"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
@@ -830,7 +831,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: getLabelColor() }}>
-                    Last Name <span className="text-red-500">*</span>
+                    Last Name {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="text"
@@ -838,7 +839,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     placeholder="Enter your last name"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
@@ -899,14 +900,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="region" style={{ color: getLabelColor() }}>
-                    Region <span className="text-red-500">*</span>
+                    Region {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     id="region"
                     name="region"
                     value={formData.region}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
@@ -923,14 +924,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="city" style={{ color: getLabelColor() }}>
-                    City/Municipality <span className="text-red-500">*</span>
+                    City/Municipality {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     id="city"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     disabled={!formData.region}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
@@ -948,14 +949,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: getLabelColor() }}>
-                    Barangay <span className="text-red-500">*</span>
+                    Barangay {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     id="barangay"
                     name="barangay"
                     value={formData.barangay}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     disabled={!formData.city}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
@@ -997,7 +998,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: getLabelColor() }}>
-                    Complete Location <span className="text-red-500">*</span>
+                    Complete Location {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="text"
@@ -1005,7 +1006,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     name="completeLocation"
                     value={fullLocationText}
                     readOnly
-                    required
+                    required={requireFields}
                     placeholder="Select region, city, barangay, and location above"
                     className="w-full border rounded px-3 py-2"
                     style={{ 
@@ -1021,14 +1022,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="col-span-1 md:col-span-2 mb-4">
                   <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: getLabelColor() }}>
-                    Installation Address <span className="text-red-500">*</span>
+                    Installation Address {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <textarea
                     id="installationAddress"
                     name="installationAddress"
                     value={formData.installationAddress}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     placeholder="Enter complete address details"
                     rows={3}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -1042,7 +1043,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: getLabelColor() }}>
-                    Landmark <span className="text-red-500">*</span>
+                    Landmark {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
                     type="text"
@@ -1050,7 +1051,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     name="landmark"
                     value={formData.landmark}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     placeholder="Enter a landmark"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
@@ -1063,7 +1064,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: getLabelColor() }}>
-                    Nearest Landmark #1 Image <span className="text-red-500">*</span>
+                    Nearest Landmark #1 Image {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
                     <input
@@ -1071,7 +1072,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="nearestLandmark1Image"
                       name="nearestLandmark1Image"
                       onChange={handleFileChange}
-                      required
+                      required={requireFields}
                       accept=".jpg,.jpeg,.png"
                       className="hidden"
                     />
@@ -1094,7 +1095,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: getLabelColor() }}>
-                    Nearest Landmark #2 Image <span className="text-red-500">*</span>
+                    Nearest Landmark #2 Image {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
                     <input
@@ -1102,7 +1103,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="nearestLandmark2Image"
                       name="nearestLandmark2Image"
                       onChange={handleFileChange}
-                      required
+                      required={requireFields}
                       accept=".jpg,.jpeg,.png"
                       className="hidden"
                     />
@@ -1151,14 +1152,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="plan" style={{ color: getLabelColor() }}>
-                    Plan <span className="text-red-500">*</span>
+                    Plan {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     id="plan"
                     name="plan"
                     value={formData.plan}
                     onChange={handleInputChange}
-                    required
+                    required={requireFields}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
@@ -1217,7 +1218,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: getLabelColor() }}>
-                    Proof of Billing <span className="text-red-500">*</span>
+                    Proof of Billing {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
                     <input
@@ -1225,7 +1226,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="proofOfBilling"
                       name="proofOfBilling"
                       onChange={handleFileChange}
-                      required
+                      required={requireFields}
                       accept=".jpg,.jpeg,.png,.pdf"
                       className="hidden"
                     />
@@ -1248,7 +1249,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: getLabelColor() }}>
-                    Government Valid ID (Primary) <span className="text-red-500">*</span>
+                    Government Valid ID (Primary) {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
                     <input
@@ -1256,7 +1257,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="governmentIdPrimary"
                       name="governmentIdPrimary"
                       onChange={handleFileChange}
-                      required
+                      required={requireFields}
                       accept=".jpg,.jpeg,.png,.pdf"
                       className="hidden"
                     />
@@ -1309,7 +1310,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: getLabelColor() }}>
-                    House Front Picture <span className="text-red-500">*</span>
+                    House Front Picture {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
                     <input
@@ -1317,7 +1318,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="houseFrontPicture"
                       name="houseFrontPicture"
                       onChange={handleFileChange}
-                      required
+                      required={requireFields}
                       accept=".jpg,.jpeg,.png"
                       className="hidden"
                     />
@@ -1341,7 +1342,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 {formData.promo && formData.promo !== '' && (
                   <div className="mb-4">
                     <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: getLabelColor() }}>
-                      Promo Proof Document <span className="text-red-500">*</span>
+                      Promo Proof Document {requireFields && <span className="text-red-500">*</span>}
                     </label>
                     <div className="flex items-center">
                       <input
@@ -1349,7 +1350,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         id="promoProof"
                         name="promoProof"
                         onChange={handleFileChange}
-                        required
+                        required={requireFields}
                         accept=".jpg,.jpeg,.png,.pdf"
                         className="hidden"
                       />
