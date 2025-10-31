@@ -112,6 +112,21 @@ Route::get('/health', function () {
     ]);
 });
 
+Route::get('/debug/form-ui-structure', function () {
+    try {
+        return response()->json([
+            'table_exists' => Schema::hasTable('form_ui'),
+            'columns' => Schema::getColumnListing('form_ui'),
+            'current_data' => DB::table('form_ui')->first(),
+            'row_count' => DB::table('form_ui')->count()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
 Route::get('/debug/gdrive-status', function () {
     try {
         $diagnostics = [

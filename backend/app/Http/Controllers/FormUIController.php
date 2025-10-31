@@ -20,7 +20,7 @@ class FormUIController extends Controller
         if (!$settings) {
             DB::table('form_ui')->insert([
                 'page_hex' => null,
-                'form_hex' => null,
+                'button_hex' => null,
                 'logo' => null,
             ]);
             $settings = DB::table('form_ui')->first();
@@ -37,9 +37,16 @@ class FormUIController extends Controller
      */
     public function updateSettings(Request $request): JsonResponse
     {
+        \Log::info('Form UI Update Request:', [
+            'all_data' => $request->all(),
+            'page_hex' => $request->input('page_hex'),
+            'button_hex' => $request->input('button_hex'),
+            'has_logo' => $request->hasFile('logo')
+        ]);
+        
         $validator = Validator::make($request->all(), [
             'page_hex' => 'nullable|string|max:25',
-            'form_hex' => 'nullable|string|max:25',
+            'button_hex' => 'nullable|string|max:25',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
@@ -55,13 +62,23 @@ class FormUIController extends Controller
 
         $updateData = [];
         
+        \Log::info('Building update data...');
+        
         if ($request->has('page_hex')) {
+            \Log::info('Has page_hex: ' . $request->input('page_hex'));
             $updateData['page_hex'] = $request->input('page_hex');
+        } else {
+            \Log::info('Does NOT have page_hex');
         }
         
-        if ($request->has('form_hex')) {
-            $updateData['form_hex'] = $request->input('form_hex');
+        if ($request->has('button_hex')) {
+            \Log::info('Has button_hex: ' . $request->input('button_hex'));
+            $updateData['button_hex'] = $request->input('button_hex');
+        } else {
+            \Log::info('Does NOT have button_hex');
         }
+        
+        \Log::info('Final updateData array:', $updateData);
         
         if ($request->hasFile('logo')) {
             $settings = DB::table('form_ui')->first();

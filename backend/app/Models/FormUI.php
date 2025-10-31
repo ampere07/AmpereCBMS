@@ -13,7 +13,7 @@ class FormUI extends Model
 
     protected $fillable = [
         'page_hex',
-        'form_hex',
+        'button_hex',
         'logo',
     ];
 

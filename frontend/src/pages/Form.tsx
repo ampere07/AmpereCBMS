@@ -84,7 +84,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
-  const [formBgColor, setFormBgColor] = useState('');
   const [buttonColor, setButtonColor] = useState('#3B82F6');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
@@ -94,40 +93,35 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   useEffect(() => {
     const fetchUISettings = async () => {
       try {
+        console.log('Fetching UI settings from:', `${apiBaseUrl}/api/form-ui/settings`);
         const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
+        console.log('Fetch response status:', response.status);
         if (response.ok) {
           const result = await response.json();
+          console.log('Fetched UI settings:', result);
           if (result.success && result.data) {
+            console.log('page_hex from DB:', result.data.page_hex);
+            console.log('button_hex from DB:', result.data.button_hex);
+            console.log('logo from DB:', result.data.logo);
+            
             if (result.data.page_hex) {
               setBackgroundColor(result.data.page_hex);
-            } else {
-              const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-              if (savedBgColor) setBackgroundColor(savedBgColor);
             }
             
-            if (result.data.form_hex) {
-              setFormBgColor(result.data.form_hex);
+            if (result.data.button_hex) {
+              console.log('Setting buttonColor to:', result.data.button_hex);
+              setButtonColor(result.data.button_hex);
             } else {
-              const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-              if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+              console.log('button_hex is NULL, keeping default:', buttonColor);
             }
             
             if (result.data.logo) {
               setLogoPreview(`${apiBaseUrl}/storage/${result.data.logo}`);
             }
           }
-        } else {
-          const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-          const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-          if (savedBgColor) setBackgroundColor(savedBgColor);
-          if (savedFormBgColor) setFormBgColor(savedFormBgColor);
         }
       } catch (error) {
         console.error('Error fetching UI settings:', error);
-        const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-        const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-        if (savedBgColor) setBackgroundColor(savedBgColor);
-        if (savedFormBgColor) setFormBgColor(savedFormBgColor);
       }
     };
     
@@ -187,17 +181,36 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
   const handleSaveColors = async () => {
     try {
+      console.log('=== SAVE COLORS DEBUG ===');
+      console.log('1. State values:', { backgroundColor, buttonColor, logoFile });
+      console.log('2. buttonColor type:', typeof buttonColor);
+      console.log('3. buttonColor length:', buttonColor?.length);
+      console.log('4. buttonColor is truthy:', !!buttonColor);
+      
       const formData = new FormData();
       
       if (backgroundColor) {
+        console.log('5. Appending page_hex:', backgroundColor);
         formData.append('page_hex', backgroundColor);
       }
-      if (formBgColor) {
-        formData.append('form_hex', formBgColor);
+      
+      if (buttonColor) {
+        console.log('6. Appending button_hex:', buttonColor);
+        formData.append('button_hex', buttonColor);
+      } else {
+        console.log('6. NOT appending button_hex - value is:', buttonColor);
       }
+      
       if (logoFile) {
+        console.log('7. Appending logo:', logoFile.name);
         formData.append('logo', logoFile);
       }
+      
+      console.log('8. FormData contents:');
+      formData.forEach((value, key) => {
+        console.log(`   ${key}: ${value}`);
+      });
+      console.log('========================');
       
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -210,22 +223,16 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          if (backgroundColor) {
-            localStorage.setItem('formPageBackgroundColor', backgroundColor);
-          }
-          if (formBgColor) {
-            localStorage.setItem('formContainerBackgroundColor', formBgColor);
-          }
           setHasUnsavedChanges(false);
-          alert('Colors saved successfully!');
+          alert('Settings saved successfully!');
           if (onEditModeChange) {
             onEditModeChange(false);
           }
         } else {
-          alert('Failed to save colors: ' + (result.message || 'Unknown error'));
+          alert('Failed to save settings: ' + (result.message || 'Unknown error'));
         }
       } else {
-        alert('Failed to save colors to database');
+        alert('Failed to save settings to database');
       }
     } catch (error) {
       console.error('Error saving colors:', error);
@@ -244,15 +251,15 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   };
 
   const getTextColor = (): string => {
-    return isColorDark(formBgColor) ? '#FFFFFF' : '#1F2937';
+    return isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937';
   };
 
   const getLabelColor = (): string => {
-    return isColorDark(formBgColor) ? '#E5E7EB' : '#374151';
+    return isColorDark(backgroundColor) ? '#E5E7EB' : '#374151';
   };
 
   const getBorderColor = (): string => {
-    return isColorDark(formBgColor) ? '#4B5563' : '#E5E7EB';
+    return isColorDark(backgroundColor) ? '#4B5563' : '#E5E7EB';
   };
 
   const [formData, setFormData] = useState<FormState>({
@@ -633,23 +640,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
-                  Upload Logo
-                </label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="w-full border-2 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  style={{
-                    borderColor: '#E5E7EB',
-                    backgroundColor: '#F9FAFB',
-                    color: '#1F2937'
-                  }}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Background Color
                 </label>
                 <div className="flex items-center space-x-3">
@@ -681,6 +671,23 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     }}
                   />
                 </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Upload Logo
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="w-full border-2 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937'
+                  }}
+                />
               </div>
               
               <div>
@@ -955,7 +962,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   >
@@ -980,7 +987,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   >
@@ -1005,7 +1012,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   >
@@ -1029,7 +1036,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   >
@@ -1055,7 +1062,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#0a0a0a' : '#f9fafb',
+                      backgroundColor: isColorDark(backgroundColor) ? '#0a0a0a' : '#f9fafb',
                       color: getTextColor()
                     }}
                   />
@@ -1079,7 +1086,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   ></textarea>
@@ -1100,7 +1107,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   />
@@ -1125,7 +1132,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
                         borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                         color: getTextColor()
                       }}
                     >
@@ -1156,7 +1163,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
                         borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                         color: getTextColor()
                       }}
                     >
@@ -1182,7 +1189,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   />
@@ -1207,7 +1214,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   >
@@ -1232,7 +1239,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
                       borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
                       color: getTextColor()
                     }}
                   >
@@ -1279,7 +1286,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
                         borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                         color: getTextColor()
                       }}
                     >
@@ -1310,7 +1317,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
                         borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                         color: getTextColor()
                       }}
                     >
@@ -1340,7 +1347,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
                         borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                         color: getTextColor()
                       }}
                     >
@@ -1371,7 +1378,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
                         borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                         color: getTextColor()
                       }}
                     >
@@ -1403,7 +1410,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         className="cursor-pointer border rounded px-3 py-2 text-sm"
                         style={{ 
                           borderColor: getBorderColor(),
-                          backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
+                          backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
                           color: getTextColor()
                         }}
                       >
