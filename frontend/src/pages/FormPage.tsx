@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Form, { FormRef } from './Form';
 import MultiStepForm, { MultiStepFormRef } from '../components/MultiStepForm';
+import LoadingScreen from '../components/Loading/LoadingScreen';
 
 const FormPage: React.FC = () => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
@@ -8,6 +9,7 @@ const FormPage: React.FC = () => {
   const multiStepFormRef = useRef<MultiStepFormRef>(null);
   const [formLayout, setFormLayout] = useState<'original' | 'multistep'>('original');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoadingLayout, setIsLoadingLayout] = useState(true);
 
   useEffect(() => {
     const fetchLayoutSettings = async () => {
@@ -26,11 +28,13 @@ const FormPage: React.FC = () => {
         }
       } catch (error) {
         console.error('Error fetching layout settings:', error);
+      } finally {
+        setIsLoadingLayout(false);
       }
     };
     
     fetchLayoutSettings();
-  }, []);
+  }, [apiBaseUrl]);
 
   const handleLayoutChange = async (layout: 'original' | 'multistep') => {
     console.log('=== LAYOUT CHANGE TRIGGERED ===');
@@ -71,6 +75,10 @@ const FormPage: React.FC = () => {
       console.error('Error saving layout preference:', error);
     }
   };
+
+  if (isLoadingLayout) {
+    return <LoadingScreen message="Loading form configuration..." />;
+  }
 
   return (
     <>
