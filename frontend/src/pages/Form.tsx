@@ -88,6 +88,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [buttonColor, setButtonColor] = useState('#3B82F6');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
+  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string}>({backgroundColor: '', buttonColor: '', logoPreview: ''});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   useEffect(() => {
     const fetchUISettings = async () => {
@@ -144,6 +146,27 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   }));
 
   const handleEdit = () => {
+    if (isEditMode && hasUnsavedChanges) {
+      const confirm = window.confirm('You have unsaved changes. Are you sure you want to exit without saving?');
+      if (!confirm) {
+        return;
+      }
+      setBackgroundColor(initialEditValues.backgroundColor);
+      setButtonColor(initialEditValues.buttonColor);
+      setLogoPreview(initialEditValues.logoPreview);
+      setLogoFile(null);
+      setHasUnsavedChanges(false);
+    }
+    
+    if (!isEditMode) {
+      setInitialEditValues({
+        backgroundColor: backgroundColor,
+        buttonColor: buttonColor,
+        logoPreview: logoPreview
+      });
+      setHasUnsavedChanges(false);
+    }
+    
     if (onEditModeChange) {
       onEditModeChange(!isEditMode);
     }
@@ -156,6 +179,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
+        setHasUnsavedChanges(true);
       };
       reader.readAsDataURL(file);
     }
@@ -192,6 +216,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           if (formBgColor) {
             localStorage.setItem('formContainerBackgroundColor', formBgColor);
           }
+          setHasUnsavedChanges(false);
           alert('Colors saved successfully!');
           if (onEditModeChange) {
             onEditModeChange(false);
@@ -594,9 +619,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     <div style={{ backgroundColor: backgroundColor || '#1a1a1a', minHeight: '100vh', padding: '2rem 0' }}>
       <div className="mx-auto max-w-4xl px-4">
         {isEditMode && (
-          <div className="mb-6 border rounded-lg p-6" style={{ backgroundColor: 'transparent', borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#4B5563' }}>
+          <div className="mb-6 border-2 rounded-lg p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>Edit</h3>
+              <h3 className="text-lg font-semibold" style={{ color: '#1F2937' }}>Edit</h3>
               <button
                 onClick={handleSaveColors}
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -607,68 +632,87 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Upload Logo
                 </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleLogoChange}
-                  className="w-full border bg-transparent rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full border-2 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   style={{
-                    borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB',
-                    color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937'
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937'
                   }}
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Background Color
                 </label>
                 <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    value={backgroundColor || '#1a1a1a'}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
-                    className="h-10 w-20 rounded border cursor-pointer"
-                    style={{ borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB' }}
-                  />
+                  <div className="relative h-11 w-24 rounded-lg border-2 overflow-hidden shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+                    <input
+                      type="color"
+                      value={backgroundColor || '#1a1a1a'}
+                      onChange={(e) => {
+                        setBackgroundColor(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-pointer"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
                   <input
                     type="text"
                     value={backgroundColor || '#1a1a1a'}
-                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    onChange={(e) => {
+                      setBackgroundColor(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="#1a1a1a"
-                    className="flex-1 border bg-transparent rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="flex-1 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{
-                      borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB',
-                      color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937'
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Button Color
                 </label>
                 <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    value={buttonColor}
-                    onChange={(e) => setButtonColor(e.target.value)}
-                    className="h-10 w-20 rounded border cursor-pointer"
-                    style={{ borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB' }}
-                  />
+                  <div className="relative h-11 w-24 rounded-lg border-2 overflow-hidden shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+                    <input
+                      type="color"
+                      value={buttonColor}
+                      onChange={(e) => {
+                        setButtonColor(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-pointer"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
                   <input
                     type="text"
                     value={buttonColor}
-                    onChange={(e) => setButtonColor(e.target.value)}
+                    onChange={(e) => {
+                      setButtonColor(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
                     placeholder="#3B82F6"
-                    className="flex-1 border bg-transparent rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="flex-1 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{
-                      borderColor: isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB',
-                      color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937'
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
@@ -676,23 +720,23 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               
               {onLayoutChange && (
                 <div>
-                  <label className="block text-sm font-medium mb-3" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#374151' }}>
+                  <label className="block text-sm font-medium mb-3" style={{ color: '#374151' }}>
                     Form Layout
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <button
                       type="button"
                       onClick={() => onLayoutChange('original')}
-                      className="p-3 border-2 rounded-lg text-left transition-all"
+                      className="p-4 border-2 rounded-lg text-left transition-all shadow-sm hover:shadow-md"
                       style={{
-                        borderColor: currentLayout === 'original' ? buttonColor : (isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB'),
-                        backgroundColor: currentLayout === 'original' ? `${buttonColor}20` : 'transparent'
+                        borderColor: currentLayout === 'original' ? buttonColor : '#E5E7EB',
+                        backgroundColor: currentLayout === 'original' ? `${buttonColor}15` : '#F9FAFB'
                       }}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-semibold text-sm" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>Original Layout</h4>
-                          <p className="text-xs mt-1" style={{ color: isColorDark(backgroundColor) ? '#D1D5DB' : '#6B7280' }}>
+                          <h4 className="font-semibold text-sm" style={{ color: '#1F2937' }}>Original Layout</h4>
+                          <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
                             Single-page form
                           </p>
                         </div>
@@ -707,16 +751,16 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     <button
                       type="button"
                       onClick={() => onLayoutChange('multistep')}
-                      className="p-3 border-2 rounded-lg text-left transition-all"
+                      className="p-4 border-2 rounded-lg text-left transition-all shadow-sm hover:shadow-md"
                       style={{
-                        borderColor: currentLayout === 'multistep' ? buttonColor : (isColorDark(backgroundColor) ? '#FFFFFF' : '#D1D5DB'),
-                        backgroundColor: currentLayout === 'multistep' ? `${buttonColor}20` : 'transparent'
+                        borderColor: currentLayout === 'multistep' ? buttonColor : '#E5E7EB',
+                        backgroundColor: currentLayout === 'multistep' ? `${buttonColor}15` : '#F9FAFB'
                       }}
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-semibold text-sm" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>Multi-Step Layout</h4>
-                          <p className="text-xs mt-1" style={{ color: isColorDark(backgroundColor) ? '#D1D5DB' : '#6B7280' }}>
+                          <h4 className="font-semibold text-sm" style={{ color: '#1F2937' }}>Multi-Step Layout</h4>
+                          <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
                             Step-by-step form
                           </p>
                         </div>
@@ -734,21 +778,21 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           </div>
         )}
         
-        <div className="mb-6 flex justify-center items-center py-12" style={{ backgroundColor: 'transparent' }}>
-          {logoPreview ? (
-            <img src={logoPreview} alt="Logo" className="h-24 object-contain" />
-          ) : (
-            <div className="text-2xl font-bold" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937' }}>LOGO</div>
-          )}
-        </div>
-        
-        <div className="mb-6 text-center">
-          <p className="text-sm" style={{ color: isColorDark(backgroundColor) ? '#FFFFFF' : '#6B7280' }}>Powered by SYNC</p>
-        </div>
-        
-        <div className="shadow-md rounded-lg transition-colors p-8" style={{ backgroundColor: formBgColor || '#000000' }}>
+        <div className="rounded-lg transition-colors p-8" style={{ backgroundColor: '#FFFFFF', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+          <div className="mb-6 flex justify-center items-center py-8">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo" className="h-24 object-contain" />
+            ) : (
+              <div className="text-2xl font-bold" style={{ color: '#1F2937' }}>LOGO</div>
+            )}
+          </div>
+          
+          <div className="mb-8 text-center">
+            <p className="text-sm" style={{ color: '#6B7280' }}>Powered by SYNC</p>
+          </div>
+          
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold" style={{ color: getTextColor() }}>Application Form</h2>
+            <h2 className="text-xl font-semibold" style={{ color: '#1F2937' }}>Application Form</h2>
             {showEditButton && (
               <button
                 onClick={handleEdit}
@@ -761,11 +805,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       
           <form onSubmit={handleSubmit}>
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Contact Information</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Contact Information</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="email" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="email" style={{ color: '#374151' }}>
                     Email {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -776,17 +820,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     required={requireFields}
                     placeholder="Enter your email address"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: '#374151' }}>
                     Mobile {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -798,18 +842,18 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     placeholder="09********"
                     pattern="09[0-9]{9}"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
-                  <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09********</small>
+                  <small className="text-sm" style={{ color: '#6B7280' }}>Format: 09********</small>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: '#374151' }}>
                     First Name {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -820,17 +864,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     required={requireFields}
                     placeholder="Enter your first name"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: '#374151' }}>
                     Last Name {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -841,17 +885,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     required={requireFields}
                     placeholder="Enter your last name"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="middleInitial" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="middleInitial" style={{ color: '#374151' }}>
                     Middle Initial
                   </label>
                   <input
@@ -862,17 +906,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     maxLength={1}
                     placeholder="M"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: '#374151' }}>
                     Secondary Mobile
                   </label>
                   <input
@@ -883,11 +927,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     placeholder="09********"
                     pattern="09[0-9]{9}"
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
@@ -895,7 +939,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </section>
             
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Installation Address</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Installation Address</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
@@ -1147,7 +1191,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </section>
             
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Plan Selection</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Plan Selection</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
@@ -1211,9 +1255,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </section>
             
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Upload Documents</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Upload Documents</h3>
               
-              <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
+              <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
@@ -1396,19 +1440,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               </div>
             </section>
             
-            <div className="flex justify-end space-x-4">
-              <button 
-                type="button" 
-                className="px-6 py-2 border rounded hover:opacity-80"
-                style={{
-                  borderColor: buttonColor,
-                  color: buttonColor,
-                  backgroundColor: 'transparent'
-                }}
-                onClick={handleReset}
-              >
-                Reset
-              </button>
+            <div className="flex justify-end">
               <button 
                 type="submit" 
                 className="px-6 py-2 text-white rounded hover:opacity-90 disabled:opacity-50"
