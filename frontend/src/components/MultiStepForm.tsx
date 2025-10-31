@@ -83,6 +83,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
@@ -435,37 +436,52 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     if (!requireFields) {
       return true;
     }
+    
+    const missing: string[] = [];
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const mobileRegex = /^09[0-9]{9}$/;
+    
     switch (step) {
       case 1:
-        return !!(
-          formData.email &&
-          formData.mobile &&
-          formData.firstName &&
-          formData.lastName
-        );
+        if (!formData.email) {
+          missing.push('Email');
+        } else if (!emailRegex.test(formData.email)) {
+          missing.push('Email (invalid format - must include @ and domain)');
+        }
+        
+        if (!formData.mobile) {
+          missing.push('Mobile');
+        } else if (!mobileRegex.test(formData.mobile)) {
+          missing.push('Mobile (invalid format - must be 09XXXXXXXXX)');
+        }
+        
+        if (!formData.firstName) missing.push('First Name');
+        if (!formData.lastName) missing.push('Last Name');
+        break;
       case 2:
-        return !!(
-          formData.region &&
-          formData.city &&
-          formData.barangay &&
-          formData.completeLocation &&
-          formData.installationAddress &&
-          formData.landmark &&
-          formData.nearestLandmark1Image &&
-          formData.nearestLandmark2Image
-        );
+        if (!formData.region) missing.push('Region');
+        if (!formData.city) missing.push('City/Municipality');
+        if (!formData.barangay) missing.push('Barangay');
+        if (!formData.completeLocation) missing.push('Complete Location');
+        if (!formData.installationAddress) missing.push('Installation Address');
+        if (!formData.landmark) missing.push('Landmark');
+        if (!formData.nearestLandmark1Image) missing.push('Nearest Landmark #1 Image');
+        if (!formData.nearestLandmark2Image) missing.push('Nearest Landmark #2 Image');
+        break;
       case 3:
-        return !!(
-          formData.plan &&
-          formData.proofOfBilling &&
-          formData.governmentIdPrimary &&
-          formData.houseFrontPicture &&
-          formData.privacyAgreement &&
-          (!formData.promo || formData.promoProof)
-        );
+        if (!formData.plan) missing.push('Plan');
+        if (!formData.proofOfBilling) missing.push('Proof of Billing');
+        if (!formData.governmentIdPrimary) missing.push('Government Valid ID (Primary)');
+        if (!formData.houseFrontPicture) missing.push('House Front Picture');
+        if (!formData.privacyAgreement) missing.push('Privacy Agreement');
+        if (formData.promo && !formData.promoProof) missing.push('Promo Proof Document');
+        break;
       default:
-        return false;
+        break;
     }
+    
+    setMissingFields(missing);
+    return missing.length === 0;
   };
 
   const handleNext = () => {
@@ -1541,26 +1557,29 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
       {showValidationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="bg-yellow-100 rounded-full p-3">
-                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Required Fields Missing</h3>
-            <p className="text-center text-gray-600 mb-6">Please fill in all required fields before proceeding.</p>
-            <div className="flex justify-center">
-              <button
-                onClick={() => setShowValidationModal(false)}
-                className="px-6 py-2 text-white rounded hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{
-                  backgroundColor: buttonColor
-                }}
-              >
-                OK
-              </button>
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => {
+                setShowValidationModal(false);
+                setMissingFields([]);
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2 mt-4">Required Fields Missing</h3>
+            <p className="text-center text-gray-600 mb-4">Please fill in the following required fields:</p>
+            <div className="mb-6 max-h-48 overflow-y-auto">
+              <ul className="space-y-2">
+                {missingFields.map((field, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="text-gray-700">{field}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
