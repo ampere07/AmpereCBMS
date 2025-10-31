@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Form from './pages/Form';
+import FormPage from './pages/FormPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import './App.css';
@@ -28,7 +28,7 @@ const App: React.FC = () => {
       }
       return <Dashboard />;
     }
-    return <Form />;
+    return <FormPage />;
   };
 
   return (

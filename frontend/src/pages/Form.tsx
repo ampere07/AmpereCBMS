@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import API_CONFIG from '../config/api';
 
 interface Region {
@@ -31,8 +31,6 @@ interface Plan {
   description?: string;
   price: number;
 }
-
-
 
 interface FormState {
   email: string;
@@ -67,10 +65,57 @@ interface Promo {
   status: string;
 }
 
-const Form: React.FC = () => {
+export interface FormRef {
+  saveColors: () => void;
+}
+
+interface FormProps {
+  showEditButton?: boolean;
+  onLayoutChange?: (layout: 'original' | 'multistep') => void;
+  currentLayout?: 'original' | 'multistep';
+  isEditMode?: boolean;
+  onEditModeChange?: (isEdit: boolean) => void;
+  requireFields?: boolean;
+}
+
+const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original', isEditMode: externalIsEditMode, onEditModeChange, requireFields = true }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
+  const [backgroundColor, setBackgroundColor] = useState('');
+  const [buttonColor, setButtonColor] = useState('#3B82F6');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string}>({backgroundColor: '', buttonColor: '', logoPreview: ''});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  useEffect(() => {
+    const fetchUISettings = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            if (result.data.page_hex) {
+              setBackgroundColor(result.data.page_hex);
+            }
+            
+            if (result.data.button_hex) {
+              setButtonColor(result.data.button_hex);
+            }
+            
+            if (result.data.logo) {
+              setLogoPreview(`${apiBaseUrl}/storage/${result.data.logo}`);
+            }
+          }
+        }
+      } catch (error) {
+      }
+    };
+    
+    fetchUISettings();
+  }, []);
   
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
@@ -78,6 +123,118 @@ const Form: React.FC = () => {
   const [villages, setVillages] = useState<Village[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promos, setPromos] = useState<Promo[]>([]);
+
+  useImperativeHandle(ref, () => ({
+    saveColors: () => {}
+  }));
+
+  const handleEdit = () => {
+    if (isEditMode && hasUnsavedChanges) {
+      const confirm = window.confirm('You have unsaved changes. Are you sure you want to exit without saving?');
+      if (!confirm) {
+        return;
+      }
+      setBackgroundColor(initialEditValues.backgroundColor);
+      setButtonColor(initialEditValues.buttonColor);
+      setLogoPreview(initialEditValues.logoPreview);
+      setLogoFile(null);
+      setHasUnsavedChanges(false);
+    }
+    
+    if (!isEditMode) {
+      setInitialEditValues({
+        backgroundColor: backgroundColor,
+        buttonColor: buttonColor,
+        logoPreview: logoPreview
+      });
+      setHasUnsavedChanges(false);
+    }
+    
+    if (onEditModeChange) {
+      onEditModeChange(!isEditMode);
+    }
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+        setHasUnsavedChanges(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveColors = async () => {
+    try {
+      const formData = new FormData();
+      
+      if (backgroundColor) {
+        formData.append('page_hex', backgroundColor);
+      }
+      
+      if (buttonColor) {
+        formData.append('button_hex', buttonColor);
+      }
+      
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+      
+      const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
+      formData.append('multi_step', multiStepValue);
+      
+      const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json'
+        },
+        body: formData
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setHasUnsavedChanges(false);
+          alert('Settings saved successfully!');
+          if (onEditModeChange) {
+            onEditModeChange(false);
+          }
+        } else {
+          alert('Failed to save settings: ' + (result.message || 'Unknown error'));
+        }
+      } else {
+        alert('Failed to save settings to database');
+      }
+    } catch (error) {
+      alert('Error saving colors. Please try again.');
+    }
+  };
+
+  const isColorDark = (color: string): boolean => {
+    if (!color) return false;
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  };
+
+  const getTextColor = (): string => {
+    return isColorDark(backgroundColor) ? '#FFFFFF' : '#1F2937';
+  };
+
+  const getLabelColor = (): string => {
+    return isColorDark(backgroundColor) ? '#E5E7EB' : '#374151';
+  };
+
+  const getBorderColor = (): string => {
+    return isColorDark(backgroundColor) ? '#4B5563' : '#E5E7EB';
+  };
 
   const [formData, setFormData] = useState<FormState>({
     email: '',
@@ -105,44 +262,42 @@ const Form: React.FC = () => {
     promoProof: null,
     privacyAgreement: false
   });
-  
 
-useEffect(() => {
-  const fetchRegions = async () => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/region`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch region');
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/region`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch region');
+        }
+        const data = await response.json();
+        setRegions(data.regions || []);
+      } catch (error) {
+        console.error('Error fetching regions:', error);
+        setRegions([]);
       }
-      const data = await response.json();
-      setRegions(data.regions || []);
-    } catch (error) {
-      console.error('Error fetching regions:', error);
-      setRegions([]);
-    }
-  };
+    };
 
-  fetchRegions();
-}, []);
+    fetchRegions();
+  }, []);
 
-useEffect(() => {
-  const fetchPlans = async () => {
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/plans`); // ✅ FIXED HERE
-      if (!response.ok) {
-        throw new Error('Failed to fetch plans');
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/plans`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch plans');
+        }
+        const data = await response.json();
+        setPlans(data.data || []);
+      } catch (error) {
+        console.error('Error fetching plans:', error);
+        setPlans([]);
       }
-      const data = await response.json();
-      setPlans(data.data || []);
-    } catch (error) {
-      console.error('Error fetching plans:', error);
-      setPlans([]);
-    }
-  };
+    };
 
-  fetchPlans();
-}, []);
-
+    fetchPlans();
+  }, []);
 
   useEffect(() => {
     const fetchCities = async () => {
@@ -175,26 +330,22 @@ useEffect(() => {
   }, [formData.region]);
 
   useEffect(() => {
-  const fetchPromos = async () => {
-    try {
-      console.log('Fetching promos from:', `${apiBaseUrl}/api/promo_list`);
-      const response = await fetch(`${apiBaseUrl}/api/promo_list`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch promos');
+    const fetchPromos = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/promo_list`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch promos');
+        }
+        const data = await response.json();
+        setPromos(data.data || []);
+      } catch (error) {
+        console.error('Error fetching promos:', error);
+        setPromos([]);
       }
-      const data = await response.json();
-      console.log('Promos fetched successfully:', data);
-      setPromos(data.data || []);
-    } catch (error) {
-      console.error('Error fetching promos:', error);
-      setPromos([]);
-    }
-  };
+    };
 
-  fetchPromos();
-}, []);
-
+    fetchPromos();
+  }, []);
 
   useEffect(() => {
     const fetchBarangays = async () => {
@@ -252,7 +403,6 @@ useEffect(() => {
     fetchVillages();
   }, [formData.barangay]);
 
-  // Track full location text
   const [fullLocationText, setFullLocationText] = useState<string>('');
 
   useEffect(() => {
@@ -309,7 +459,6 @@ useEffect(() => {
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.checked });
-    console.log('Privacy agreement:', e.target.checked);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -320,10 +469,8 @@ useEffect(() => {
       return;
     }
     
-    // Create FormData object for file uploads
     const submissionData = new FormData();
     
-    // Add form fields to FormData in a format matching the updated API
     submissionData.append('firstName', formData.firstName);
     submissionData.append('middleInitial', formData.middleInitial);
     submissionData.append('lastName', formData.lastName);
@@ -344,12 +491,9 @@ useEffect(() => {
     submissionData.append('landmark', formData.landmark);
     submissionData.append('referredBy', formData.referredBy);
     
-    // Add plan information
     submissionData.append('plan', formData.plan);
     submissionData.append('promo', formData.promo || '');
     
-    // Also append document files directly to the application submission
-    // This way they are stored in the correct fields in the database
     if (formData.proofOfBilling) {
       submissionData.append('proofOfBilling', formData.proofOfBilling);
     }
@@ -381,10 +525,6 @@ useEffect(() => {
     try {
       setIsSubmitting(true);
       
-
-      
-      // No need for CSRF token with the updated API
-      
       const response = await fetch(`${apiBaseUrl}/api/application/store`, {
         method: 'POST',
         body: submissionData,
@@ -396,8 +536,6 @@ useEffect(() => {
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Validation errors:', errorData);
-        // Display specific validation errors if available
         if (errorData.errors) {
           const errorMessages = Object.values(errorData.errors).flat();
           throw new Error(errorMessages.join('\n'));
@@ -410,15 +548,12 @@ useEffect(() => {
       setShowSuccessModal(true);
       
     } catch (error) {
-      console.error('Error submitting form:', error);
       let errorMessage = 'Failed to submit application. Please try again.';
       
-      // Check if it's a specific error with a message
       if (error instanceof Error) {
         errorMessage = error.message;
       }
       
-      // Show a more user-friendly alert
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -426,7 +561,6 @@ useEffect(() => {
   };
 
   const handleReset = () => {
-    // Reset form fields including file inputs
     setFormData({
       email: '',
       mobile: '',
@@ -454,7 +588,6 @@ useEffect(() => {
       privacyAgreement: false
     });
     
-    // Reset file input elements
     const fileInputs = document.querySelectorAll('input[type="file"]');
     fileInputs.forEach((input) => {
       (input as HTMLInputElement).value = '';
@@ -462,554 +595,858 @@ useEffect(() => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-4 bg-white shadow-md rounded-lg">
-      <header className="border-b border-gray-200 pb-4 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Sync</h1>
-      </header>
-      
-      <main>
-        <h2 className="text-xl font-semibold mb-6 text-gray-800">Application Form</h2>
+    <div style={{ backgroundColor: backgroundColor || '#1a1a1a', minHeight: '100vh', padding: '2rem 0' }}>
+      <div className="mx-auto max-w-4xl px-4">
+        {isEditMode && (
+          <div className="mb-6 border-2 rounded-lg p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-semibold" style={{ color: '#1F2937' }}>Edit</h3>
+              <button
+                onClick={handleSaveColors}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                Save
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Background Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <div className="relative h-11 w-24 rounded-lg border-2 overflow-hidden shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+                    <input
+                      type="color"
+                      value={backgroundColor || '#1a1a1a'}
+                      onChange={(e) => {
+                        setBackgroundColor(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-pointer"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={backgroundColor || '#1a1a1a'}
+                    onChange={(e) => {
+                      setBackgroundColor(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder="#1a1a1a"
+                    className="flex-1 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Upload Logo
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="w-full border-2 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937'
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Button Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <div className="relative h-11 w-24 rounded-lg border-2 overflow-hidden shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+                    <input
+                      type="color"
+                      value={buttonColor}
+                      onChange={(e) => {
+                        setButtonColor(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-pointer"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={buttonColor}
+                    onChange={(e) => {
+                      setButtonColor(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder="#3B82F6"
+                    className="flex-1 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {onLayoutChange && (
+                <div>
+                  <label className="block text-sm font-medium mb-3" style={{ color: '#374151' }}>
+                    Form Layout
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onLayoutChange('original')}
+                      className="p-4 border-2 rounded-lg text-left transition-all shadow-sm hover:shadow-md"
+                      style={{
+                        borderColor: currentLayout === 'original' ? buttonColor : '#E5E7EB',
+                        backgroundColor: currentLayout === 'original' ? `${buttonColor}15` : '#F9FAFB'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-sm" style={{ color: '#1F2937' }}>Original Layout</h4>
+                          <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
+                            Single-page form
+                          </p>
+                        </div>
+                        {currentLayout === 'original' && (
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" style={{ color: buttonColor }}>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => onLayoutChange('multistep')}
+                      className="p-4 border-2 rounded-lg text-left transition-all shadow-sm hover:shadow-md"
+                      style={{
+                        borderColor: currentLayout === 'multistep' ? buttonColor : '#E5E7EB',
+                        backgroundColor: currentLayout === 'multistep' ? `${buttonColor}15` : '#F9FAFB'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-sm" style={{ color: '#1F2937' }}>Multi-Step Layout</h4>
+                          <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
+                            Step-by-step form
+                          </p>
+                        </div>
+                        {currentLayout === 'multistep' && (
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" style={{ color: buttonColor }}>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
-        <form onSubmit={handleSubmit}>
-          {/* Contact Information Section */}
-          <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Contact Information</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="email">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Enter your email address"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="mobile">
-                  Mobile <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  id="mobile"
-                  name="mobile"
-                  value={formData.mobile}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="09********"
-                  pattern="09[0-9]{9}"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-                <small className="text-gray-500 text-sm">Format: 09********</small>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="firstName">
-                  First Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Enter your first name"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="lastName">
-                  Last Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Enter your last name"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="middleInitial">
-                  Middle Initial
-                </label>
-                <input
-                  type="text"
-                  id="middleInitial"
-                  name="middleInitial"
-                  value={formData.middleInitial}
-                  onChange={handleInputChange}
-                  maxLength={1}
-                  placeholder="M"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="secondaryMobile">
-                  Secondary Mobile
-                </label>
-                <input
-                  type="tel"
-                  id="secondaryMobile"
-                  name="secondaryMobile"
-                  value={formData.secondaryMobile}
-                  onChange={handleInputChange}
-                  placeholder="09********"
-                  pattern="09[0-9]{9}"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </section>
+        <div className="rounded-lg transition-colors p-8" style={{ backgroundColor: '#FFFFFF', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+          <div className="mb-6 flex justify-center items-center py-8">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo" className="h-24 object-contain" />
+            ) : (
+              <div className="text-2xl font-bold" style={{ color: '#1F2937' }}>LOGO</div>
+            )}
+          </div>
           
-          {/* Installation Address Section */}
-          <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Installation Address</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="region">
-                  Region <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="region"
-                  name="region"
-                  value={formData.region}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">Select region</option>
-                  {regions && regions.length > 0 && regions.map(region => (
-                    <option key={region.id} value={region.region_code}>{region.region_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="city">
-                  City/Municipality <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="city"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  required
-                  disabled={!formData.region}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-                >
-                  <option value="">Select city/municipality</option>
-                  {cities && cities.length > 0 && cities.map(city => (
-                    <option key={city.id} value={city.city_code}>{city.city_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="barangay">
-                  Barangay <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="barangay"
-                  name="barangay"
-                  value={formData.barangay}
-                  onChange={handleInputChange}
-                  required
-                  disabled={!formData.city}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-                >
-                  <option value="">Select barangay</option>
-                  {barangays && barangays.length > 0 && barangays.map(barangay => (
-                    <option key={barangay.id} value={barangay.barangay_code}>{barangay.barangay_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="location">
-                  Location
-                </label>
-                <select
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  disabled={!formData.barangay}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-                >
-                  <option value="">Select location</option>
-                  {villages && villages.length > 0 && villages.map(village => (
-                    <option key={village.id} value={village.village_code}>{village.village_name}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="completeLocation">
-                  Complete Location <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="completeLocation"
-                  name="completeLocation"
-                  value={fullLocationText}
-                  readOnly
-                  required
-                  placeholder="Select region, city, barangay, and location above"
-                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-50"
-                />
-                {!fullLocationText && (
-                  <small className="text-gray-500 text-sm">This field will auto-populate based on your selections above</small>
-                )}
-              </div>
-              
-              <div className="col-span-1 md:col-span-2 mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="installationAddress">
-                  Installation Address <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="installationAddress"
-                  name="installationAddress"
-                  value={formData.installationAddress}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Enter complete address details"
-                  rows={3}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                ></textarea>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="landmark">
-                  Landmark <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="landmark"
-                  name="landmark"
-                  value={formData.landmark}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="Enter a landmark"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark1Image">
-                  Nearest Landmark #1 Image <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="file"
-                    id="nearestLandmark1Image"
-                    name="nearestLandmark1Image"
-                    onChange={handleFileChange}
-                    required
-                    accept=".jpg,.jpeg,.png"
-                    className="hidden"
-                  />
-                  <label htmlFor="nearestLandmark1Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
-                    Choose Image
-                  </label>
-                  <span className="ml-3 text-sm text-gray-600">
-                    {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="nearestLandmark2Image">
-                  Nearest Landmark #2 Image <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="file"
-                    id="nearestLandmark2Image"
-                    name="nearestLandmark2Image"
-                    onChange={handleFileChange}
-                    required
-                    accept=".jpg,.jpeg,.png"
-                    className="hidden"
-                  />
-                  <label htmlFor="nearestLandmark2Image" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
-                    Choose Image
-                  </label>
-                  <span className="ml-3 text-sm text-gray-600">
-                    {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="referredBy">
-                  Referred By
-                </label>
-                <input
-                  type="text"
-                  id="referredBy"
-                  name="referredBy"
-                  value={formData.referredBy}
-                  onChange={handleInputChange}
-                  placeholder="Enter referrer name (optional)"
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </section>
+          <div className="mb-8 text-center">
+            <p className="text-sm" style={{ color: '#6B7280' }}>Powered by SYNC</p>
+          </div>
           
-          {/* Plan Selection Section */}
-          <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Plan Selection</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="plan">
-                  Plan <span className="text-red-500">*</span>
-                </label>
-                <select
-                  id="plan"
-                  name="plan"
-                  value={formData.plan}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">Select plan</option>
-                  {plans && plans.length > 0 && plans.map(plan => (
-                    <option key={plan.id} value={plan.id}>
-  {plan.plan_name} - ₱{plan.price.toLocaleString()}
-</option>
-
-                  ))}
-                </select>
-              </div>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold" style={{ color: '#1F2937' }}>Application Form</h2>
+            {showEditButton && (
+              <button
+                onClick={handleEdit}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {isEditMode ? 'Cancel' : 'Edit'}
+              </button>
+            )}
+          </div>
+      
+          <form onSubmit={handleSubmit}>
+            <section className="mb-8">
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Contact Information</h3>
               
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="promo">
-                  Promo
-                </label>
-                <select
-                  id="promo"
-                  name="promo"
-                  value={formData.promo}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">None</option>
-                  {promos && promos.length > 0 ? (
-                    promos.map(promo => (
-                      <option key={promo.id} value={promo.name}>
-                        {promo.name}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled>Loading promos...</option>
-                  )}
-                </select>
-                {promos.length === 0 && (
-                  <small className="text-gray-500 text-sm">No active promos available</small>
-                )}
-              </div>
-            </div>
-          </section>
-          
-          {/* Upload Documents Section */}
-          <section className="mb-8">
-            <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-100">Upload Documents</h3>
-            
-            <p className="mb-4 text-sm text-gray-600">Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="proofOfBilling">
-                  Proof of Billing <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="file"
-                    id="proofOfBilling"
-                    name="proofOfBilling"
-                    onChange={handleFileChange}
-                    required
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    className="hidden"
-                  />
-                  <label htmlFor="proofOfBilling" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
-                    Choose File
-                  </label>
-                  <span className="ml-3 text-sm text-gray-600">
-                    {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="governmentIdPrimary">
-                  Government Valid ID (Primary) <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="file"
-                    id="governmentIdPrimary"
-                    name="governmentIdPrimary"
-                    onChange={handleFileChange}
-                    required
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    className="hidden"
-                  />
-                  <label htmlFor="governmentIdPrimary" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
-                    Choose File
-                  </label>
-                  <span className="ml-3 text-sm text-gray-600">
-                    {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="governmentIdSecondary">
-                  Government Valid ID (Secondary)
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="file"
-                    id="governmentIdSecondary"
-                    name="governmentIdSecondary"
-                    onChange={handleFileChange}
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    className="hidden"
-                  />
-                  <label htmlFor="governmentIdSecondary" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
-                    Choose File
-                  </label>
-                  <span className="ml-3 text-sm text-gray-600">
-                    {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <label className="block text-gray-700 font-medium mb-2" htmlFor="houseFrontPicture">
-                  House Front Picture <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center">
-                  <input
-                    type="file"
-                    id="houseFrontPicture"
-                    name="houseFrontPicture"
-                    onChange={handleFileChange}
-                    required
-                    accept=".jpg,.jpeg,.png"
-                    className="hidden"
-                  />
-                  <label htmlFor="houseFrontPicture" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
-                    Choose File
-                  </label>
-                  <span className="ml-3 text-sm text-gray-600">
-                    {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
-                  </span>
-                </div>
-              </div>
-              
-              {formData.promo && formData.promo !== '' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
-                  <label className="block text-gray-700 font-medium mb-2" htmlFor="promoProof">
-                    Promo Proof Document <span className="text-red-500">*</span>
+                  <label className="block font-medium mb-2" htmlFor="email" style={{ color: '#374151' }}>
+                    Email {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    placeholder="Enter your email address"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: '#374151' }}>
+                    Mobile {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="tel"
+                    id="mobile"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    placeholder="09********"
+                    pattern="09[0-9]{9}"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                  <small className="text-sm" style={{ color: '#6B7280' }}>Format: 09********</small>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: '#374151' }}>
+                    First Name {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    id="firstName"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    placeholder="Enter your first name"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: '#374151' }}>
+                    Last Name {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    id="lastName"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    placeholder="Enter your last name"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="middleInitial" style={{ color: '#374151' }}>
+                    Middle Initial
+                  </label>
+                  <input
+                    type="text"
+                    id="middleInitial"
+                    name="middleInitial"
+                    value={formData.middleInitial}
+                    onChange={handleInputChange}
+                    maxLength={1}
+                    placeholder="M"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: '#374151' }}>
+                    Secondary Mobile
+                  </label>
+                  <input
+                    type="tel"
+                    id="secondaryMobile"
+                    name="secondaryMobile"
+                    value={formData.secondaryMobile}
+                    onChange={handleInputChange}
+                    placeholder="09********"
+                    pattern="09[0-9]{9}"
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+            
+            <section className="mb-8">
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Installation Address</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="region" style={{ color: '#374151' }}>
+                    Region {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <select
+                    id="region"
+                    name="region"
+                    value={formData.region}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  >
+                    <option value="">Select region</option>
+                    {regions && regions.length > 0 && regions.map(region => (
+                      <option key={region.id} value={region.region_code}>{region.region_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="city" style={{ color: '#374151' }}>
+                    City/Municipality {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <select
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    disabled={!formData.region}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  >
+                    <option value="">Select city/municipality</option>
+                    {cities && cities.length > 0 && cities.map(city => (
+                      <option key={city.id} value={city.city_code}>{city.city_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: '#374151' }}>
+                    Barangay {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <select
+                    id="barangay"
+                    name="barangay"
+                    value={formData.barangay}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    disabled={!formData.city}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  >
+                    <option value="">Select barangay</option>
+                    {barangays && barangays.length > 0 && barangays.map(barangay => (
+                      <option key={barangay.id} value={barangay.barangay_code}>{barangay.barangay_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="location" style={{ color: '#374151' }}>
+                    Location
+                  </label>
+                  <select
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    disabled={!formData.barangay}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  >
+                    <option value="">Select location</option>
+                    {villages && villages.length > 0 && villages.map(village => (
+                      <option key={village.id} value={village.village_code}>{village.village_name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: '#374151' }}>
+                    Complete Location {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    id="completeLocation"
+                    name="completeLocation"
+                    value={fullLocationText}
+                    readOnly
+                    required={requireFields}
+                    placeholder="Select region, city, barangay, and location above"
+                    className="w-full border rounded px-3 py-2"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F3F4F6',
+                      color: '#6B7280'
+                    }}
+                  />
+                  {!fullLocationText && (
+                    <small className="text-sm" style={{ color: '#6B7280' }}>This field will auto-populate based on your selections above</small>
+                  )}
+                </div>
+                
+                <div className="col-span-1 md:col-span-2 mb-4">
+                  <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: '#374151' }}>
+                    Installation Address {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <textarea
+                    id="installationAddress"
+                    name="installationAddress"
+                    value={formData.installationAddress}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    placeholder="Enter complete address details"
+                    rows={3}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  ></textarea>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: '#374151' }}>
+                    Landmark {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    id="landmark"
+                    name="landmark"
+                    value={formData.landmark}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    placeholder="Enter a landmark"
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: '#374151' }}>
+                    Nearest Landmark #1 Image {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
                     <input
                       type="file"
-                      id="promoProof"
-                      name="promoProof"
+                      id="nearestLandmark1Image"
+                      name="nearestLandmark1Image"
                       onChange={handleFileChange}
-                      required
+                      required={requireFields}
+                      accept=".jpg,.jpeg,.png"
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="nearestLandmark1Image" 
+                      className="cursor-pointer border rounded px-3 py-2 text-sm"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
+                      }}
+                    >
+                      Choose Image
+                    </label>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                      {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: '#374151' }}>
+                    Nearest Landmark #2 Image {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      id="nearestLandmark2Image"
+                      name="nearestLandmark2Image"
+                      onChange={handleFileChange}
+                      required={requireFields}
+                      accept=".jpg,.jpeg,.png"
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="nearestLandmark2Image" 
+                      className="cursor-pointer border rounded px-3 py-2 text-sm"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
+                      }}
+                    >
+                      Choose Image
+                    </label>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                      {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>
+                    Referred By
+                  </label>
+                  <input
+                    type="text"
+                    id="referredBy"
+                    name="referredBy"
+                    value={formData.referredBy}
+                    onChange={handleInputChange}
+                    placeholder="Enter referrer name (optional)"
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+            </section>
+            
+            <section className="mb-8">
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Plan Selection</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="plan" style={{ color: '#374151' }}>
+                    Plan {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <select
+                    id="plan"
+                    name="plan"
+                    value={formData.plan}
+                    onChange={handleInputChange}
+                    required={requireFields}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  >
+                    <option value="">Select plan</option>
+                    {plans && plans.length > 0 && plans.map(plan => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.plan_name} - ₱{plan.price.toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="promo" style={{ color: '#374151' }}>
+                    Promo
+                  </label>
+                  <select
+                    id="promo"
+                    name="promo"
+                    value={formData.promo}
+                    onChange={handleInputChange}
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ 
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  >
+                    <option value="">None</option>
+                    {promos && promos.length > 0 ? (
+                      promos.map(promo => (
+                        <option key={promo.id} value={promo.name}>
+                          {promo.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>Loading promos...</option>
+                    )}
+                  </select>
+                  {promos.length === 0 && (
+                    <small className="text-sm" style={{ color: '#6B7280' }}>No active promos available</small>
+                  )}
+                </div>
+              </div>
+            </section>
+            
+            <section className="mb-8">
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Upload Documents</h3>
+              
+              <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: '#374151' }}>
+                    Proof of Billing {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      id="proofOfBilling"
+                      name="proofOfBilling"
+                      onChange={handleFileChange}
+                      required={requireFields}
                       accept=".jpg,.jpeg,.png,.pdf"
                       className="hidden"
                     />
-                    <label htmlFor="promoProof" className="cursor-pointer bg-gray-100 border border-gray-300 rounded px-3 py-2 text-sm">
+                    <label 
+                      htmlFor="proofOfBilling" 
+                      className="cursor-pointer border rounded px-3 py-2 text-sm"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
+                      }}
+                    >
                       Choose File
                     </label>
-                    <span className="ml-3 text-sm text-gray-600">
-                      {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                      {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
                     </span>
                   </div>
-                  <small className="text-gray-500 text-sm">Required when a promo is selected</small>
                 </div>
-              )}
-            </div>
-          </section>
-          
-          {/* Privacy Agreement */}
-          <section className="mb-8">
-            <div className="flex items-center mb-4">
-              <input
-                type="checkbox"
-                id="privacyAgreement"
-                name="privacyAgreement"
-                checked={formData.privacyAgreement}
-                onChange={handleCheckboxChange}
-                required
-                className="mr-2 h-4 w-4"
-              />
-              <label 
-                htmlFor="privacyAgreement" 
-                className="text-sm text-gray-700"
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: '#374151' }}>
+                    Government Valid ID (Primary) {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      id="governmentIdPrimary"
+                      name="governmentIdPrimary"
+                      onChange={handleFileChange}
+                      required={requireFields}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="governmentIdPrimary" 
+                      className="cursor-pointer border rounded px-3 py-2 text-sm"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
+                      }}
+                    >
+                      Choose File
+                    </label>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                      {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: '#374151' }}>
+                    Government Valid ID (Secondary)
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      id="governmentIdSecondary"
+                      name="governmentIdSecondary"
+                      onChange={handleFileChange}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="governmentIdSecondary" 
+                      className="cursor-pointer border rounded px-3 py-2 text-sm"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
+                      }}
+                    >
+                      Choose File
+                    </label>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                      {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mb-4">
+                  <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: '#374151' }}>
+                    House Front Picture {requireFields && <span className="text-red-500">*</span>}
+                  </label>
+                  <div className="flex items-center">
+                    <input
+                      type="file"
+                      id="houseFrontPicture"
+                      name="houseFrontPicture"
+                      onChange={handleFileChange}
+                      required={requireFields}
+                      accept=".jpg,.jpeg,.png"
+                      className="hidden"
+                    />
+                    <label 
+                      htmlFor="houseFrontPicture" 
+                      className="cursor-pointer border rounded px-3 py-2 text-sm"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
+                      }}
+                    >
+                      Choose File
+                    </label>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                      {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
+                    </span>
+                  </div>
+                </div>
+                
+                {formData.promo && formData.promo !== '' && (
+                  <div className="mb-4">
+                    <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: '#374151' }}>
+                      Promo Proof Document {requireFields && <span className="text-red-500">*</span>}
+                    </label>
+                    <div className="flex items-center">
+                      <input
+                        type="file"
+                        id="promoProof"
+                        name="promoProof"
+                        onChange={handleFileChange}
+                        required={requireFields}
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        className="hidden"
+                      />
+                      <label 
+                        htmlFor="promoProof" 
+                        className="cursor-pointer border rounded px-3 py-2 text-sm"
+                        style={{ 
+                          borderColor: '#E5E7EB',
+                          backgroundColor: '#FFFFFF',
+                          color: '#1F2937'
+                        }}
+                      >
+                        Choose File
+                      </label>
+                      <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
+                        {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
+                      </span>
+                    </div>
+                    <small className="text-sm" style={{ color: '#6B7280' }}>Required when a promo is selected</small>
+                  </div>
+                )}
+              </div>
+            </section>
+            
+            <section className="mb-8">
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="privacyAgreement"
+                  name="privacyAgreement"
+                  checked={formData.privacyAgreement}
+                  onChange={handleCheckboxChange}
+                  required
+                  className="mr-2 h-4 w-4"
+                />
+                <label 
+                  htmlFor="privacyAgreement" 
+                  className="text-sm"
+                  style={{ color: '#374151' }}
+                >
+                  I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies.
+                </label>
+              </div>
+            </section>
+            
+            <div className="flex justify-end">
+              <button 
+                type="submit" 
+                className="px-6 py-2 text-white rounded hover:opacity-90 disabled:opacity-50"
+                style={{
+                  backgroundColor: buttonColor
+                }}
+                disabled={!formData.privacyAgreement || isSubmitting}
               >
-                I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies.
-              </label>
+                {isSubmitting ? 'Submitting...' : 'Submit'}
+              </button>
             </div>
-          </section>
-          
-          {/* Form Actions */}
-          <div className="flex justify-end space-x-4">
-            <button 
-              type="button" 
-              className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-100"
-              onClick={handleReset}
-            >
-              Reset
-            </button>
-            <button 
-              type="submit" 
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-              disabled={!formData.privacyAgreement || isSubmitting}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
-            </button>
-          </div>
-        </form>
-      </main>
+          </form>
+        </div>
+      </div>
       
-      {/* Loading Modal */}
       {isSubmitting && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
             <div className="flex items-center justify-center mb-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-            <p className="text-center text-gray-700 font-medium">Submitting your application...</p>
-            <p className="text-center text-gray-500 text-sm mt-2">Please wait while we process your form.</p>
+            <p className="text-center font-medium" style={{ color: getTextColor() }}>Submitting your application...</p>
+            <p className="text-center text-sm mt-2" style={{ color: getTextColor(), opacity: 0.7 }}>Please wait while we process your form.</p>
           </div>
         </div>
       )}
 
-      {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -1038,6 +1475,6 @@ useEffect(() => {
       )}
     </div>
   );
-};
+});
 
 export default Form;
