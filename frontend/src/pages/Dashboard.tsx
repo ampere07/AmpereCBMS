@@ -31,6 +31,10 @@ interface DashboardStats {
   rejected_applications: number;
 }
 
+interface FormUISettings {
+  brand_name?: string;
+}
+
 const Dashboard: React.FC = () => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const formRef = useRef<FormRef>(null);
@@ -46,6 +50,8 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [formLayout, setFormLayout] = useState<'original' | 'multistep'>('original');
   const [isEditMode, setIsEditMode] = useState(false);
+  const [brandName, setBrandName] = useState<string>('Ampere CBMS');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     const userData = localStorage.getItem('user_data');
@@ -59,6 +65,7 @@ const Dashboard: React.FC = () => {
     }
 
     fetchDashboardData();
+    fetchBrandName();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -95,10 +102,28 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const fetchBrandName = async () => {
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data && result.data.brand_name) {
+          setBrandName(result.data.brand_name);
+        }
+      }
+    } catch (error) {
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user_data');
     window.location.href = '/login';
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    handleLogout();
   };
 
   const handleLayoutChange = (layout: 'original' | 'multistep') => {
@@ -147,17 +172,20 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Ampere CBMS</h1>
+              <h1 className="text-xl font-bold text-gray-900">{brandName}</h1>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">
                 Welcome, <span className="font-medium">{user?.name || user?.username}</span>
               </span>
               <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                onClick={() => setShowLogoutModal(true)}
+                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-red-500"
+                title="Logout"
               >
-                Logout
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
               </button>
             </div>
           </div>
@@ -187,6 +215,36 @@ const Dashboard: React.FC = () => {
           />
         )}
       </main>
+
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-red-100 rounded-full p-3">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Confirm Logout</h3>
+            <p className="text-center text-gray-600 mb-6">Are you sure you want to logout?</p>
+            <div className="flex justify-center space-x-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="px-6 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLogout}
+                className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

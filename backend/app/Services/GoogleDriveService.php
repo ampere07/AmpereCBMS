@@ -211,4 +211,113 @@ class GoogleDriveService
         
         return $documentType . '.' . $extension;
     }
+
+    public function uploadFormLogo($filePath, $brandName = null)
+    {
+        try {
+            $folderName = $brandName ? "Logo - {$brandName}" : "Logo";
+            
+            Log::info('Starting form logo upload', [
+                'folder_name' => $folderName,
+                'parent_folder_id' => $this->folderId
+            ]);
+
+            $logoFolderId = $this->findOrCreateFolder($folderName);
+            
+            if (!$logoFolderId) {
+                throw new \Exception('Failed to create or find logo folder');
+            }
+
+            Log::info('Logo folder ready', ['folder_id' => $logoFolderId]);
+
+            $fileName = 'logo_' . time() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+            $mimeType = mime_content_type($filePath);
+
+            Log::info('Uploading logo file', [
+                'name' => $fileName,
+                'folder_id' => $logoFolderId,
+                'mime' => $mimeType,
+                'size' => filesize($filePath)
+            ]);
+
+            $fileMetadata = new DriveFile([
+                'name' => $fileName,
+                'parents' => [$logoFolderId]
+            ]);
+
+            $content = file_get_contents($filePath);
+
+            $file = $this->driveService->files->create($fileMetadata, [
+                'data' => $content,
+                'mimeType' => $mimeType,
+                'uploadType' => 'multipart',
+                'fields' => 'id',
+                'supportsAllDrives' => true
+            ]);
+
+            $this->makeFileViewable($file->id);
+
+            $viewUrl = "https://drive.google.com/file/d/{$file->id}/view";
+            
+            Log::info('Logo uploaded successfully', [
+                'file_id' => $file->id,
+                'url' => $viewUrl
+            ]);
+
+            return $viewUrl;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to upload logo: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    private function findOrCreateFolder($folderName)
+    {
+        try {
+            $query = "name = '{$folderName}' and mimeType = 'application/vnd.google-apps.folder' and '{$this->folderId}' in parents and trashed = false";
+            
+            $response = $this->driveService->files->listFiles([
+                'q' => $query,
+                'fields' => 'files(id, name)',
+                'supportsAllDrives' => true,
+                'includeItemsFromAllDrives' => true
+            ]);
+
+            if (count($response->files) > 0) {
+                Log::info('Found existing folder', [
+                    'folder_name' => $folderName,
+                    'folder_id' => $response->files[0]->id
+                ]);
+                return $response->files[0]->id;
+            }
+
+            Log::info('Creating new folder', [
+                'name' => $folderName,
+                'parent' => $this->folderId
+            ]);
+
+            $folderMetadata = new DriveFile([
+                'name' => $folderName,
+                'mimeType' => 'application/vnd.google-apps.folder',
+                'parents' => [$this->folderId]
+            ]);
+
+            $folder = $this->driveService->files->create($folderMetadata, [
+                'fields' => 'id',
+                'supportsAllDrives' => true
+            ]);
+
+            Log::info('Folder created successfully', [
+                'folder_id' => $folder->id,
+                'folder_name' => $folderName
+            ]);
+
+            return $folder->id;
+
+        } catch (\Exception $e) {
+            Log::error('Failed to find or create folder: ' . $e->getMessage());
+            throw $e;
+        }
+    }
 }

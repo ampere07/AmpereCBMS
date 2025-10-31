@@ -90,8 +90,24 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [buttonColor, setButtonColor] = useState('#3B82F6');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
-  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string}>({backgroundColor: '', buttonColor: '', logoPreview: ''});
+  const [brandName, setBrandName] = useState<string>('');
+  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: ''});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  const convertGDriveUrl = (url: string): string => {
+    if (!url) return '';
+    
+    if (url.includes('drive.google.com/file/d/')) {
+      const fileId = url.split('/file/d/')[1].split('/')[0];
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+    }
+    
+    if (url.includes('drive.google.com/uc?')) {
+      return url;
+    }
+    
+    return url;
+  };
   
   useEffect(() => {
     const fetchUISettings = async () => {
@@ -99,6 +115,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
         if (response.ok) {
           const result = await response.json();
+          console.log('Fetched UI settings:', result);
           if (result.success && result.data) {
             if (result.data.page_hex) {
               setBackgroundColor(result.data.page_hex);
@@ -108,8 +125,15 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               setButtonColor(result.data.button_hex);
             }
             
-            if (result.data.logo) {
-              setLogoPreview(`${apiBaseUrl}/storage/${result.data.logo}`);
+            if (result.data.logo_url) {
+              const convertedUrl = convertGDriveUrl(result.data.logo_url);
+              console.log('Original logo URL:', result.data.logo_url);
+              console.log('Converted logo URL:', convertedUrl);
+              setLogoPreview(convertedUrl);
+            }
+            
+            if (result.data.brand_name) {
+              setBrandName(result.data.brand_name);
             }
           }
         }
@@ -130,6 +154,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setBackgroundColor(initialEditValues.backgroundColor);
       setButtonColor(initialEditValues.buttonColor);
       setLogoPreview(initialEditValues.logoPreview);
+      setBrandName(initialEditValues.brandName);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -138,7 +163,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setInitialEditValues({
         backgroundColor: backgroundColor,
         buttonColor: buttonColor,
-        logoPreview: logoPreview
+        logoPreview: logoPreview,
+        brandName: brandName
       });
       setHasUnsavedChanges(false);
     }
@@ -175,6 +201,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         formData.append('logo', logoFile);
       }
       
+      if (brandName) {
+        formData.append('brand_name', brandName);
+      }
+      
       const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
       formData.append('multi_step', multiStepValue);
       
@@ -198,10 +228,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           alert('Failed to save settings: ' + (result.message || 'Unknown error'));
         }
       } else {
-        alert('Failed to save settings to database');
+        const errorData = await response.json();
+        alert('Failed to save settings: ' + (errorData.message || 'Unknown error'));
       }
     } catch (error) {
-      alert('Error saving colors. Please try again.');
+      console.error('Error saving settings:', error);
+      alert('Error saving settings. Please try again.');
     }
   };
 
@@ -675,30 +707,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: getLabelColor() }}>
-            Mobile {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="tel"
-            id="mobile"
-            name="mobile"
-            value={formData.mobile}
-            onChange={handleInputChange}
-            required={requireFields}
-            placeholder="09********"
-            pattern="09[0-9]{9}"
-            title="Please enter a valid mobile number (format: 09XXXXXXXXX)"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            style={{ 
-              borderColor: getBorderColor(),
-              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-              color: getTextColor()
-            }}
-          />
-          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (11 digits)</small>
-        </div>
-        
-        <div className="mb-4">
           <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: getLabelColor() }}>
             First Name {requireFields && <span className="text-red-500">*</span>}
           </label>
@@ -711,28 +719,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             required={requireFields}
             placeholder="Enter your first name"
             title="Please enter your first name"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            style={{ 
-              borderColor: getBorderColor(),
-              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-              color: getTextColor()
-            }}
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: getLabelColor() }}>
-            Last Name {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleInputChange}
-            required={requireFields}
-            placeholder="Enter your last name"
-            title="Please enter your last name"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -764,6 +750,52 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             }}
           />
           <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Single letter only</small>
+        </div>
+        
+        <div className="mb-4">
+          <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: getLabelColor() }}>
+            Last Name {requireFields && <span className="text-red-500">*</span>}
+          </label>
+          <input
+            type="text"
+            id="lastName"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            required={requireFields}
+            placeholder="Enter your last name"
+            title="Please enter your last name"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: getLabelColor() }}>
+            Mobile {requireFields && <span className="text-red-500">*</span>}
+          </label>
+          <input
+            type="tel"
+            id="mobile"
+            name="mobile"
+            value={formData.mobile}
+            onChange={handleInputChange}
+            required={requireFields}
+            placeholder="09********"
+            pattern="09[0-9]{9}"
+            title="Please enter a valid mobile number (format: 09XXXXXXXXX)"
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            style={{ 
+              borderColor: getBorderColor(),
+              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+              color: getTextColor()
+            }}
+          />
+          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (11 digits)</small>
         </div>
         
         <div className="mb-4">
@@ -1319,10 +1351,31 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               </button>
             </div>
             
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
-                  Upload Logo
+                  Brand Name
+                </label>
+                <input
+                  type="text"
+                  value={brandName}
+                  onChange={(e) => {
+                    setBrandName(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  placeholder="Enter brand name"
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937'
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Logo
                 </label>
                 <input
                   type="file"
@@ -1342,7 +1395,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                   Background Color
                 </label>
                 <div className="flex items-center space-x-3">
-                  <div className="relative h-11 w-24 rounded-lg border-2 overflow-hidden shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+                  <div className="relative h-10 w-20 rounded border-2 overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
                     <input
                       type="color"
                       value={backgroundColor || '#1a1a1a'}
@@ -1362,7 +1415,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                       setHasUnsavedChanges(true);
                     }}
                     placeholder="#1a1a1a"
-                    className="flex-1 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    className="flex-1 border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#F9FAFB',
@@ -1377,7 +1430,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                   Button Color
                 </label>
                 <div className="flex items-center space-x-3">
-                  <div className="relative h-11 w-24 rounded-lg border-2 overflow-hidden shadow-sm" style={{ borderColor: '#E5E7EB' }}>
+                  <div className="relative h-10 w-20 rounded border-2 overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
                     <input
                       type="color"
                       value={buttonColor}
@@ -1397,7 +1450,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                       setHasUnsavedChanges(true);
                     }}
                     placeholder="#3B82F6"
-                    className="flex-1 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    className="flex-1 border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#F9FAFB',
@@ -1406,6 +1459,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                   />
                 </div>
               </div>
+            </div>
+            
+            <div className="mt-4">
               
               {onLayoutChange && (
                 <div>
@@ -1470,7 +1526,17 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         <div className="rounded-lg p-8" style={{ backgroundColor: '#FFFFFF', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
           <div className="mb-6 flex justify-center items-center py-8">
             {logoPreview ? (
-              <img src={logoPreview} alt="Logo" className="h-24 object-contain" />
+              <img 
+                src={logoPreview} 
+                alt="Logo" 
+                className="h-24 object-contain" 
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  console.error('Logo failed to load:', logoPreview);
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = '<div class="text-2xl font-bold" style="color: #1F2937">LOGO</div>';
+                }}
+              />
             ) : (
               <div className="text-2xl font-bold" style={{ color: '#1F2937' }}>LOGO</div>
             )}
@@ -1481,7 +1547,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           </div>
           
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold" style={{ color: '#1F2937' }}>Application Form</h2>
             {showEditButton && (
               <button
                 onClick={handleEdit}
@@ -1519,7 +1584,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-6 py-2 text-white rounded hover:opacity-90"
+                className="px-10 py-2 text-white rounded hover:opacity-90"
                 style={{
                   backgroundColor: buttonColor
                 }}
@@ -1530,7 +1595,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               <button 
                 type="button"
                 onClick={handleSubmit}
-                className="px-6 py-2 text-white rounded hover:opacity-90 disabled:opacity-50"
+                className="px-10 py-2 text-white rounded hover:opacity-90 disabled:opacity-50"
                 style={{
                   backgroundColor: buttonColor
                 }}

@@ -14,8 +14,9 @@ class FormUI extends Model
     protected $fillable = [
         'page_hex',
         'button_hex',
-        'logo',
+        'logo_url',
         'multi_step',
+        'brand_name',
     ];
 
     protected $casts = [
