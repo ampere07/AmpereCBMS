@@ -82,6 +82,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
@@ -161,9 +162,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const handleSaveColors = async () => {
     try {
-      console.log('=== SAVE COLORS DEBUG (MultiStep) ===');
-      console.log('State values:', { backgroundColor, buttonColor, logoFile, currentLayout });
-      
       const formData = new FormData();
       
       if (backgroundColor) {
@@ -177,13 +175,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       }
       
       const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
-      console.log('Appending multi_step:', multiStepValue);
       formData.append('multi_step', multiStepValue);
-      
-      console.log('FormData contents:');
-      formData.forEach((value, key) => {
-        console.log(`   ${key}: ${value}`);
-      });
       
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -195,7 +187,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       
       if (response.ok) {
         const result = await response.json();
-        console.log('Save response:', result);
         if (result.success) {
           setHasUnsavedChanges(false);
           alert('Settings saved successfully!');
@@ -209,7 +200,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         alert('Failed to save settings to database');
       }
     } catch (error) {
-      console.error('Error saving colors:', error);
       alert('Error saving colors. Please try again.');
     }
   };
@@ -482,7 +472,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     if (validateStep(currentStep)) {
       setCurrentStep(prev => Math.min(prev + 1, 3));
     } else {
-      alert('Please fill in all required fields before proceeding.');
+      setShowValidationModal(true);
     }
   };
 
@@ -545,7 +535,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Validation errors:', errorData);
         if (errorData.errors) {
           const errorMessages = Object.values(errorData.errors).flat();
           throw new Error(errorMessages.join('\n'));
@@ -556,7 +545,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setShowSuccessModal(true);
       
     } catch (error) {
-      console.error('Error submitting form:', error);
       let errorMessage = 'Failed to submit application. Please try again.';
       
       if (error instanceof Error) {
@@ -1500,11 +1488,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             type="button"
             onClick={handlePrevious}
             disabled={currentStep === 1}
-            className="px-6 py-2 border rounded hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 border-2 rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             style={{
               borderColor: buttonColor,
-              color: buttonColor,
-              backgroundColor: 'transparent'
+              color: '#FFFFFF',
+              backgroundColor: buttonColor
             }}
           >
             Back
@@ -1547,6 +1535,33 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             </div>
             <p className="text-center font-medium text-gray-900">Submitting your application...</p>
             <p className="text-center text-sm mt-2 text-gray-600">Please wait while we process your form.</p>
+          </div>
+        </div>
+      )}
+
+      {showValidationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-yellow-100 rounded-full p-3">
+                <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Required Fields Missing</h3>
+            <p className="text-center text-gray-600 mb-6">Please fill in all required fields before proceeding.</p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowValidationModal(false)}
+                className="px-6 py-2 text-white rounded hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{
+                  backgroundColor: buttonColor
+                }}
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}

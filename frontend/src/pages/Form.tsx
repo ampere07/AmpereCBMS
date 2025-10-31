@@ -93,26 +93,16 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   useEffect(() => {
     const fetchUISettings = async () => {
       try {
-        console.log('Fetching UI settings from:', `${apiBaseUrl}/api/form-ui/settings`);
         const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
-        console.log('Fetch response status:', response.status);
         if (response.ok) {
           const result = await response.json();
-          console.log('Fetched UI settings:', result);
           if (result.success && result.data) {
-            console.log('page_hex from DB:', result.data.page_hex);
-            console.log('button_hex from DB:', result.data.button_hex);
-            console.log('logo from DB:', result.data.logo);
-            
             if (result.data.page_hex) {
               setBackgroundColor(result.data.page_hex);
             }
             
             if (result.data.button_hex) {
-              console.log('Setting buttonColor to:', result.data.button_hex);
               setButtonColor(result.data.button_hex);
-            } else {
-              console.log('button_hex is NULL, keeping default:', buttonColor);
             }
             
             if (result.data.logo) {
@@ -121,7 +111,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           }
         }
       } catch (error) {
-        console.error('Error fetching UI settings:', error);
       }
     };
     
@@ -181,40 +170,22 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
   const handleSaveColors = async () => {
     try {
-      console.log('=== SAVE COLORS DEBUG ===');
-      console.log('1. State values:', { backgroundColor, buttonColor, logoFile, currentLayout });
-      console.log('2. buttonColor type:', typeof buttonColor);
-      console.log('3. buttonColor length:', buttonColor?.length);
-      console.log('4. buttonColor is truthy:', !!buttonColor);
-      
       const formData = new FormData();
       
       if (backgroundColor) {
-        console.log('5. Appending page_hex:', backgroundColor);
         formData.append('page_hex', backgroundColor);
       }
       
       if (buttonColor) {
-        console.log('6. Appending button_hex:', buttonColor);
         formData.append('button_hex', buttonColor);
-      } else {
-        console.log('6. NOT appending button_hex - value is:', buttonColor);
       }
       
       if (logoFile) {
-        console.log('7. Appending logo:', logoFile.name);
         formData.append('logo', logoFile);
       }
       
       const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
-      console.log('8. Appending multi_step:', multiStepValue);
       formData.append('multi_step', multiStepValue);
-      
-      console.log('9. FormData contents:');
-      formData.forEach((value, key) => {
-        console.log(`   ${key}: ${value}`);
-      });
-      console.log('========================');
       
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -239,7 +210,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         alert('Failed to save settings to database');
       }
     } catch (error) {
-      console.error('Error saving colors:', error);
       alert('Error saving colors. Please try again.');
     }
   };
@@ -566,7 +536,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Validation errors:', errorData);
         if (errorData.errors) {
           const errorMessages = Object.values(errorData.errors).flat();
           throw new Error(errorMessages.join('\n'));
@@ -579,7 +548,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       setShowSuccessModal(true);
       
     } catch (error) {
-      console.error('Error submitting form:', error);
       let errorMessage = 'Failed to submit application. Please try again.';
       
       if (error instanceof Error) {
@@ -816,7 +784,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       
           <form onSubmit={handleSubmit}>
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Contact Information</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Contact Information</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
@@ -834,7 +802,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
                       borderColor: '#E5E7EB',
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
@@ -856,7 +824,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
                       borderColor: '#E5E7EB',
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
@@ -878,7 +846,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
                       borderColor: '#E5E7EB',
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
@@ -899,7 +867,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
                       borderColor: '#E5E7EB',
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
@@ -920,7 +888,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
                       borderColor: '#E5E7EB',
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
@@ -941,7 +909,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{ 
                       borderColor: '#E5E7EB',
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
@@ -950,11 +918,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </section>
             
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Installation Address</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Installation Address</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="region" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="region" style={{ color: '#374151' }}>
                     Region {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
@@ -965,9 +933,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   >
                     <option value="">Select region</option>
@@ -978,7 +946,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="city" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="city" style={{ color: '#374151' }}>
                     City/Municipality {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
@@ -990,9 +958,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     disabled={!formData.region}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   >
                     <option value="">Select city/municipality</option>
@@ -1003,7 +971,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: '#374151' }}>
                     Barangay {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
@@ -1015,9 +983,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     disabled={!formData.city}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   >
                     <option value="">Select barangay</option>
@@ -1028,7 +996,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="location" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="location" style={{ color: '#374151' }}>
                     Location
                   </label>
                   <select
@@ -1039,9 +1007,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     disabled={!formData.barangay}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   >
                     <option value="">Select location</option>
@@ -1052,7 +1020,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: '#374151' }}>
                     Complete Location {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -1065,18 +1033,18 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     placeholder="Select region, city, barangay, and location above"
                     className="w-full border rounded px-3 py-2"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#0a0a0a' : '#f9fafb',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F3F4F6',
+                      color: '#6B7280'
                     }}
                   />
                   {!fullLocationText && (
-                    <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>This field will auto-populate based on your selections above</small>
+                    <small className="text-sm" style={{ color: '#6B7280' }}>This field will auto-populate based on your selections above</small>
                   )}
                 </div>
                 
                 <div className="col-span-1 md:col-span-2 mb-4">
-                  <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: '#374151' }}>
                     Installation Address {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <textarea
@@ -1089,15 +1057,15 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     rows={3}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   ></textarea>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: '#374151' }}>
                     Landmark {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <input
@@ -1110,15 +1078,15 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     placeholder="Enter a landmark"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: '#374151' }}>
                     Nearest Landmark #1 Image {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
@@ -1135,21 +1103,21 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       htmlFor="nearestLandmark1Image" 
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
-                        borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                        color: getTextColor()
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
                       }}
                     >
                       Choose Image
                     </label>
-                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                       {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
                     </span>
                   </div>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: '#374151' }}>
                     Nearest Landmark #2 Image {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
@@ -1166,21 +1134,21 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       htmlFor="nearestLandmark2Image" 
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
-                        borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                        color: getTextColor()
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
                       }}
                     >
                       Choose Image
                     </label>
-                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                       {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
                     </span>
                   </div>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>
                     Referred By
                   </label>
                   <input
@@ -1192,9 +1160,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     placeholder="Enter referrer name (optional)"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   />
                 </div>
@@ -1202,11 +1170,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </section>
             
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Plan Selection</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Plan Selection</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="plan" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="plan" style={{ color: '#374151' }}>
                     Plan {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <select
@@ -1217,9 +1185,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   >
                     <option value="">Select plan</option>
@@ -1232,7 +1200,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="promo" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="promo" style={{ color: '#374151' }}>
                     Promo
                   </label>
                   <select
@@ -1242,9 +1210,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ 
-                      borderColor: getBorderColor(),
-                      backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#ffffff',
-                      color: getTextColor()
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
                     }}
                   >
                     <option value="">None</option>
@@ -1259,20 +1227,20 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     )}
                   </select>
                   {promos.length === 0 && (
-                    <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>No active promos available</small>
+                    <small className="text-sm" style={{ color: '#6B7280' }}>No active promos available</small>
                   )}
                 </div>
               </div>
             </section>
             
             <section className="mb-8">
-              <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-300" style={{ color: '#1F2937' }}>Upload Documents</h3>
+              <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Upload Documents</h3>
               
               <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: '#374151' }}>
                     Proof of Billing {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
@@ -1289,21 +1257,21 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       htmlFor="proofOfBilling" 
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
-                        borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                        color: getTextColor()
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
                       }}
                     >
                       Choose File
                     </label>
-                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                       {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
                     </span>
                   </div>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: '#374151' }}>
                     Government Valid ID (Primary) {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
@@ -1320,21 +1288,21 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       htmlFor="governmentIdPrimary" 
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
-                        borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                        color: getTextColor()
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
                       }}
                     >
                       Choose File
                     </label>
-                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                       {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
                     </span>
                   </div>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: '#374151' }}>
                     Government Valid ID (Secondary)
                   </label>
                   <div className="flex items-center">
@@ -1350,21 +1318,21 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       htmlFor="governmentIdSecondary" 
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
-                        borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                        color: getTextColor()
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
                       }}
                     >
                       Choose File
                     </label>
-                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                       {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
                     </span>
                   </div>
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: getLabelColor() }}>
+                  <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: '#374151' }}>
                     House Front Picture {requireFields && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center">
@@ -1381,14 +1349,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       htmlFor="houseFrontPicture" 
                       className="cursor-pointer border rounded px-3 py-2 text-sm"
                       style={{ 
-                        borderColor: getBorderColor(),
-                        backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                        color: getTextColor()
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#FFFFFF',
+                        color: '#1F2937'
                       }}
                     >
                       Choose File
                     </label>
-                    <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                       {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
                     </span>
                   </div>
@@ -1396,7 +1364,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 
                 {formData.promo && formData.promo !== '' && (
                   <div className="mb-4">
-                    <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: getLabelColor() }}>
+                    <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: '#374151' }}>
                       Promo Proof Document {requireFields && <span className="text-red-500">*</span>}
                     </label>
                     <div className="flex items-center">
@@ -1413,18 +1381,18 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         htmlFor="promoProof" 
                         className="cursor-pointer border rounded px-3 py-2 text-sm"
                         style={{ 
-                          borderColor: getBorderColor(),
-                          backgroundColor: isColorDark(backgroundColor) ? '#1a1a1a' : '#f9fafb',
-                          color: getTextColor()
+                          borderColor: '#E5E7EB',
+                          backgroundColor: '#FFFFFF',
+                          color: '#1F2937'
                         }}
                       >
                         Choose File
                       </label>
-                      <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
+                      <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
                         {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
                       </span>
                     </div>
-                    <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Required when a promo is selected</small>
+                    <small className="text-sm" style={{ color: '#6B7280' }}>Required when a promo is selected</small>
                   </div>
                 )}
               </div>
@@ -1444,7 +1412,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 <label 
                   htmlFor="privacyAgreement" 
                   className="text-sm"
-                  style={{ color: getLabelColor() }}
+                  style={{ color: '#374151' }}
                 >
                   I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies.
                 </label>
