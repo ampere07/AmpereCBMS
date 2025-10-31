@@ -182,7 +182,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const handleSaveColors = async () => {
     try {
       console.log('=== SAVE COLORS DEBUG ===');
-      console.log('1. State values:', { backgroundColor, buttonColor, logoFile });
+      console.log('1. State values:', { backgroundColor, buttonColor, logoFile, currentLayout });
       console.log('2. buttonColor type:', typeof buttonColor);
       console.log('3. buttonColor length:', buttonColor?.length);
       console.log('4. buttonColor is truthy:', !!buttonColor);
@@ -206,7 +206,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         formData.append('logo', logoFile);
       }
       
-      console.log('8. FormData contents:');
+      const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
+      console.log('8. Appending multi_step:', multiStepValue);
+      formData.append('multi_step', multiStepValue);
+      
+      console.log('9. FormData contents:');
       formData.forEach((value, key) => {
         console.log(`   ${key}: ${value}`);
       });

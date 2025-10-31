@@ -15,6 +15,7 @@ class FormUI extends Model
         'page_hex',
         'button_hex',
         'logo',
+        'multi_step',
     ];
 
     protected $casts = [

@@ -22,6 +22,7 @@ class FormUIController extends Controller
                 'page_hex' => null,
                 'button_hex' => null,
                 'logo' => null,
+                'multi_step' => 'inactive',
             ]);
             $settings = DB::table('form_ui')->first();
         }
@@ -41,6 +42,7 @@ class FormUIController extends Controller
             'all_data' => $request->all(),
             'page_hex' => $request->input('page_hex'),
             'button_hex' => $request->input('button_hex'),
+            'multi_step' => $request->input('multi_step'),
             'has_logo' => $request->hasFile('logo')
         ]);
         
@@ -48,6 +50,7 @@ class FormUIController extends Controller
             'page_hex' => 'nullable|string|max:25',
             'button_hex' => 'nullable|string|max:25',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'multi_step' => 'nullable|string|in:active,inactive',
         ]);
 
         if ($validator->fails()) {
@@ -76,6 +79,13 @@ class FormUIController extends Controller
             $updateData['button_hex'] = $request->input('button_hex');
         } else {
             \Log::info('Does NOT have button_hex');
+        }
+        
+        if ($request->has('multi_step')) {
+            \Log::info('Has multi_step: ' . $request->input('multi_step'));
+            $updateData['multi_step'] = $request->input('multi_step');
+        } else {
+            \Log::info('Does NOT have multi_step');
         }
         
         \Log::info('Final updateData array:', $updateData);

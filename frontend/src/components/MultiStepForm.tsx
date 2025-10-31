@@ -100,34 +100,19 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           if (result.success && result.data) {
             if (result.data.page_hex) {
               setBackgroundColor(result.data.page_hex);
-            } else {
-              const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-              if (savedBgColor) setBackgroundColor(savedBgColor);
             }
             
-            if (result.data.form_hex) {
-              setFormBgColor(result.data.form_hex);
-            } else {
-              const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-              if (savedFormBgColor) setFormBgColor(savedFormBgColor);
+            if (result.data.button_hex) {
+              setButtonColor(result.data.button_hex);
             }
             
             if (result.data.logo) {
               setLogoPreview(`${apiBaseUrl}/storage/${result.data.logo}`);
             }
           }
-        } else {
-          const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-          const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-          if (savedBgColor) setBackgroundColor(savedBgColor);
-          if (savedFormBgColor) setFormBgColor(savedFormBgColor);
         }
       } catch (error) {
         console.error('Error fetching UI settings:', error);
-        const savedBgColor = localStorage.getItem('formPageBackgroundColor');
-        const savedFormBgColor = localStorage.getItem('formContainerBackgroundColor');
-        if (savedBgColor) setBackgroundColor(savedBgColor);
-        if (savedFormBgColor) setFormBgColor(savedFormBgColor);
       }
     };
     
@@ -176,17 +161,29 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const handleSaveColors = async () => {
     try {
+      console.log('=== SAVE COLORS DEBUG (MultiStep) ===');
+      console.log('State values:', { backgroundColor, buttonColor, logoFile, currentLayout });
+      
       const formData = new FormData();
       
       if (backgroundColor) {
         formData.append('page_hex', backgroundColor);
       }
-      if (formBgColor) {
-        formData.append('form_hex', formBgColor);
+      if (buttonColor) {
+        formData.append('button_hex', buttonColor);
       }
       if (logoFile) {
         formData.append('logo', logoFile);
       }
+      
+      const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
+      console.log('Appending multi_step:', multiStepValue);
+      formData.append('multi_step', multiStepValue);
+      
+      console.log('FormData contents:');
+      formData.forEach((value, key) => {
+        console.log(`   ${key}: ${value}`);
+      });
       
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -198,23 +195,18 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       
       if (response.ok) {
         const result = await response.json();
+        console.log('Save response:', result);
         if (result.success) {
-          if (backgroundColor) {
-            localStorage.setItem('formPageBackgroundColor', backgroundColor);
-          }
-          if (formBgColor) {
-            localStorage.setItem('formContainerBackgroundColor', formBgColor);
-          }
           setHasUnsavedChanges(false);
-          alert('Colors saved successfully!');
+          alert('Settings saved successfully!');
           if (onEditModeChange) {
             onEditModeChange(false);
           }
         } else {
-          alert('Failed to save colors: ' + (result.message || 'Unknown error'));
+          alert('Failed to save settings: ' + (result.message || 'Unknown error'));
         }
       } else {
-        alert('Failed to save colors to database');
+        alert('Failed to save settings to database');
       }
     } catch (error) {
       console.error('Error saving colors:', error);
@@ -668,6 +660,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             placeholder="Enter your email address"
+            title="Please enter a valid email address"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -690,6 +683,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             required={requireFields}
             placeholder="09********"
             pattern="09[0-9]{9}"
+            title="Please enter a valid mobile number (format: 09XXXXXXXXX)"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -697,7 +691,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               color: getTextColor()
             }}
           />
-          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09********</small>
+          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (11 digits)</small>
         </div>
         
         <div className="mb-4">
@@ -712,6 +706,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             placeholder="Enter your first name"
+            title="Please enter your first name"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -733,6 +728,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             placeholder="Enter your last name"
+            title="Please enter your last name"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -754,6 +750,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             maxLength={1}
             placeholder="M"
+            pattern="[A-Za-z]"
+            title="Please enter a single letter"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -761,6 +759,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               color: getTextColor()
             }}
           />
+          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Single letter only</small>
         </div>
         
         <div className="mb-4">
@@ -775,6 +774,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             placeholder="09********"
             pattern="09[0-9]{9}"
+            title="Please enter a valid mobile number (format: 09XXXXXXXXX)"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -782,6 +782,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               color: getTextColor()
             }}
           />
+          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (optional)</small>
         </div>
       </div>
     </section>
@@ -802,6 +803,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.region}
             onChange={handleInputChange}
             required={requireFields}
+            title="Please select your region"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -827,6 +829,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             disabled={!formData.region}
+            title="Please select your city/municipality"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
             style={{ 
               borderColor: getBorderColor(),
@@ -852,6 +855,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             disabled={!formData.city}
+            title="Please select your barangay"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
             style={{ 
               borderColor: getBorderColor(),
@@ -876,6 +880,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.location}
             onChange={handleInputChange}
             disabled={!formData.barangay}
+            title="Please select your location"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
             style={{ 
               borderColor: getBorderColor(),
@@ -925,6 +930,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             placeholder="Enter complete address details"
+            title="Please provide your complete installation address"
             rows={3}
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
@@ -947,6 +953,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             onChange={handleInputChange}
             required={requireFields}
             placeholder="Enter a landmark"
+            title="Please enter a landmark near your location"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -968,7 +975,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               onChange={handleFileChange}
               required={requireFields}
               accept=".jpg,.jpeg,.png"
-              className="hidden"
+              title="Please upload an image of nearest landmark #1"
+            className="hidden"
             />
             <label 
               htmlFor="nearestLandmark1Image" 
@@ -999,6 +1007,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               onChange={handleFileChange}
               required={requireFields}
               accept=".jpg,.jpeg,.png"
+              title="Please upload an image of nearest landmark #2"
               className="hidden"
             />
             <label 
@@ -1029,6 +1038,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.referredBy}
             onChange={handleInputChange}
             placeholder="Enter referrer name (optional)"
+            title="Enter the name of the person who referred you (optional)"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -1056,6 +1066,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.plan}
             onChange={handleInputChange}
             required={requireFields}
+            title="Please select a plan"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -1081,6 +1092,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             name="promo"
             value={formData.promo}
             onChange={handleInputChange}
+            title="Select a promo if available (optional)"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{ 
               borderColor: getBorderColor(),
@@ -1118,6 +1130,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               onChange={handleFileChange}
               required={requireFields}
               accept=".jpg,.jpeg,.png,.pdf"
+              title="Please upload your proof of billing (utility bill)"
               className="hidden"
             />
             <label 
@@ -1149,6 +1162,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               onChange={handleFileChange}
               required={requireFields}
               accept=".jpg,.jpeg,.png,.pdf"
+              title="Please upload your primary government-issued ID"
               className="hidden"
             />
             <label 
@@ -1179,6 +1193,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               name="governmentIdSecondary"
               onChange={handleFileChange}
               accept=".jpg,.jpeg,.png,.pdf"
+              title="Upload a secondary government-issued ID (optional)"
               className="hidden"
             />
             <label 
@@ -1210,6 +1225,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               onChange={handleFileChange}
               required={requireFields}
               accept=".jpg,.jpeg,.png"
+              title="Please upload a photo of your house front"
               className="hidden"
             />
             <label 
@@ -1242,6 +1258,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 onChange={handleFileChange}
                 required={requireFields}
                 accept=".jpg,.jpeg,.png,.pdf"
+                title="Please upload proof of eligibility for the selected promo"
                 className="hidden"
               />
               <label 
@@ -1470,8 +1487,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               </button>
             )}
           </div>
-          
-          {renderStepIndicator()}
           
           <form onSubmit={handleSubmit}>
             {currentStep === 1 && renderContactInformation()}
