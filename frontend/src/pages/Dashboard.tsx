@@ -157,7 +157,7 @@ const Dashboard: React.FC = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen message="Loading dashboard data..." />;
+    return <LoadingScreen />;
   }
 
   return (

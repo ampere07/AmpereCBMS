@@ -90,6 +90,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [brandName, setBrandName] = useState<string>('');
   const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: ''});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+  const [showSaveFailedModal, setShowSaveFailedModal] = useState(false);
+  const [saveErrorMessage, setSaveErrorMessage] = useState('');
   
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -197,6 +201,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
   const handleSaveColors = async () => {
     try {
+      setIsSavingSettings(true);
+      setSaveErrorMessage('');
+      
       const formData = new FormData();
       
       if (backgroundColor) {
@@ -230,20 +237,25 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         const result = await response.json();
         if (result.success) {
           setHasUnsavedChanges(false);
-          alert('Settings saved successfully!');
+          setShowSaveSuccessModal(true);
           if (onEditModeChange) {
             onEditModeChange(false);
           }
         } else {
-          alert('Failed to save settings: ' + (result.message || 'Unknown error'));
+          setSaveErrorMessage(result.message || 'Failed to save settings');
+          setShowSaveFailedModal(true);
         }
       } else {
         const errorData = await response.json();
-        alert('Failed to save settings: ' + (errorData.message || 'Unknown error'));
+        setSaveErrorMessage(errorData.message || 'Failed to save settings');
+        setShowSaveFailedModal(true);
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
+      setSaveErrorMessage('Error saving settings. Please check your connection and try again.');
+      setShowSaveFailedModal(true);
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -1536,6 +1548,51 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isSavingSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
+            <div className="flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+            </div>
+            <p className="text-center text-gray-700 font-medium">Saving settings...</p>
+          </div>
+        </div>
+      )}
+
+      {showSaveSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => setShowSaveSuccessModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Settings Saved</h3>
+            <p className="text-center text-gray-600 mb-4">Your settings have been saved successfully.</p>
+          </div>
+        </div>
+      )}
+
+      {showSaveFailedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => setShowSaveFailedModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Save Failed</h3>
+            <p className="text-center text-gray-600 mb-4">{saveErrorMessage}</p>
           </div>
         </div>
       )}

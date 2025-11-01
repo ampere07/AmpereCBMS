@@ -77,7 +77,7 @@ const FormPage: React.FC = () => {
   };
 
   if (isLoadingLayout) {
-    return <LoadingScreen message="Loading form configuration..." />;
+    return <LoadingScreen />;
   }
 
   return (

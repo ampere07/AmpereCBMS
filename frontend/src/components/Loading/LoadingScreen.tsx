@@ -5,12 +5,12 @@ interface LoadingScreenProps {
   message?: string;
 }
 
-const LoadingScreen: React.FC<LoadingScreenProps> = ({ message = 'Loading system data...' }) => {
+const LoadingScreen: React.FC<LoadingScreenProps> = ({ message }) => {
   return (
     <div className="loading-screen">
       <div className="loading-content">
         <div className="spinner"></div>
-        <p className="loading-message">{message}</p>
+        {message && <p className="loading-message">{message}</p>}
       </div>
     </div>
   );
