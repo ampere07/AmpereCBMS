@@ -82,6 +82,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSubmitFailedModal, setShowSubmitFailedModal] = useState(false);
+  const [submitErrorMessage, setSubmitErrorMessage] = useState('');
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [buttonColor, setButtonColor] = useState('#3B82F6');
@@ -94,6 +96,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
   const [showSaveFailedModal, setShowSaveFailedModal] = useState(false);
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
   
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -510,8 +514,43 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     e.preventDefault();
     
     if (!formData.privacyAgreement) {
-      alert('Please agree to the privacy policy before submitting.');
+      setValidationMessage('Please agree to the privacy policy before submitting.');
+      setShowValidationModal(true);
       return;
+    }
+    
+    if (requireFields) {
+      const missingImages = [];
+      
+      if (!formData.nearestLandmark1Image) {
+        missingImages.push('Nearest Landmark #1 Image');
+      }
+      
+      if (!formData.nearestLandmark2Image) {
+        missingImages.push('Nearest Landmark #2 Image');
+      }
+      
+      if (!formData.proofOfBilling) {
+        missingImages.push('Proof of Billing');
+      }
+      
+      if (!formData.governmentIdPrimary) {
+        missingImages.push('Government Valid ID (Primary)');
+      }
+      
+      if (!formData.houseFrontPicture) {
+        missingImages.push('House Front Picture');
+      }
+      
+      if (formData.promo && formData.promo !== '' && !formData.promoProof) {
+        missingImages.push('Promo Proof Document');
+      }
+      
+      if (missingImages.length > 0) {
+        setValidationMessage(`Please upload the following required documents:\n\n${missingImages.join('\n')}`);
+        setShowValidationModal(true);
+        return;
+      }
     }
     
     const submissionData = new FormData();
@@ -590,6 +629,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       
       const result = await response.json();
       
+      setIsSubmitting(false);
       setShowSuccessModal(true);
       
     } catch (error) {
@@ -599,9 +639,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         errorMessage = error.message;
       }
       
-      alert(errorMessage);
-    } finally {
+      setSubmitErrorMessage(errorMessage);
       setIsSubmitting(false);
+      setShowSubmitFailedModal(true);
     }
   };
 
@@ -1173,7 +1213,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="nearestLandmark1Image"
                       name="nearestLandmark1Image"
                       onChange={handleFileChange}
-                      required={requireFields}
                       accept=".jpg,.jpeg,.png"
                       className="hidden"
                     />
@@ -1204,7 +1243,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="nearestLandmark2Image"
                       name="nearestLandmark2Image"
                       onChange={handleFileChange}
-                      required={requireFields}
                       accept=".jpg,.jpeg,.png"
                       className="hidden"
                     />
@@ -1327,7 +1365,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="proofOfBilling"
                       name="proofOfBilling"
                       onChange={handleFileChange}
-                      required={requireFields}
                       accept=".jpg,.jpeg,.png,.pdf"
                       className="hidden"
                     />
@@ -1358,7 +1395,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="governmentIdPrimary"
                       name="governmentIdPrimary"
                       onChange={handleFileChange}
-                      required={requireFields}
                       accept=".jpg,.jpeg,.png,.pdf"
                       className="hidden"
                     />
@@ -1419,7 +1455,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       id="houseFrontPicture"
                       name="houseFrontPicture"
                       onChange={handleFileChange}
-                      required={requireFields}
                       accept=".jpg,.jpeg,.png"
                       className="hidden"
                     />
@@ -1451,7 +1486,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         id="promoProof"
                         name="promoProof"
                         onChange={handleFileChange}
-                        required={requireFields}
                         accept=".jpg,.jpeg,.png,.pdf"
                         className="hidden"
                       />
@@ -1528,13 +1562,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="bg-green-100 rounded-full p-3">
-                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-              </div>
-            </div>
             <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Submission Successful!</h3>
             <p className="text-center text-gray-600 mb-6">Your application has been submitted successfully and is now pending approval.</p>
             <div className="flex justify-center">
@@ -1593,6 +1620,48 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </button>
             <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Save Failed</h3>
             <p className="text-center text-gray-600 mb-4">{saveErrorMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {showValidationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => setShowValidationModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Validation Error</h3>
+            <p className="text-center text-gray-600 mb-4 whitespace-pre-line">{validationMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {showSubmitFailedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => setShowSubmitFailedModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Submission Failed</h3>
+            <p className="text-center text-gray-600 mb-4 whitespace-pre-line">{submitErrorMessage}</p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowSubmitFailedModal(false)}
+                className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
