@@ -86,11 +86,13 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [submitErrorMessage, setSubmitErrorMessage] = useState('');
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
+  const [formBgColor, setFormBgColor] = useState('');
+  const [formBgOpacity, setFormBgOpacity] = useState(100);
   const [buttonColor, setButtonColor] = useState('#3B82F6');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [brandName, setBrandName] = useState<string>('');
-  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: ''});
+  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string; formBgColor: string; formBgOpacity: number}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: '', formBgColor: '', formBgOpacity: 100});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
@@ -128,6 +130,18 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             
             if (result.data.button_hex) {
               setButtonColor(result.data.button_hex);
+            }
+            
+            if (result.data.form_hex) {
+              setFormBgColor(result.data.form_hex);
+            }
+            
+            if (result.data.transparency_rgba) {
+              const rgbaMatch = result.data.transparency_rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
+              if (rgbaMatch) {
+                const a = rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1;
+                setFormBgOpacity(Math.round(a * 100));
+              }
             }
             
             if (result.data.logo_url) {
@@ -171,6 +185,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       setButtonColor(initialEditValues.buttonColor);
       setLogoPreview(initialEditValues.logoPreview);
       setBrandName(initialEditValues.brandName);
+      setFormBgColor(initialEditValues.formBgColor);
+      setFormBgOpacity(initialEditValues.formBgOpacity);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -180,7 +196,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         backgroundColor: backgroundColor,
         buttonColor: buttonColor,
         logoPreview: logoPreview,
-        brandName: brandName
+        brandName: brandName,
+        formBgColor: formBgColor,
+        formBgOpacity: formBgOpacity
       });
       setHasUnsavedChanges(false);
     }
@@ -216,6 +234,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       
       if (buttonColor) {
         formData.append('button_hex', buttonColor);
+      }
+      
+      if (formBgColor) {
+        formData.append('form_hex', formBgColor);
+      }
+      if (formBgColor && formBgOpacity !== null) {
+        const r = parseInt(formBgColor.slice(1,3), 16);
+        const g = parseInt(formBgColor.slice(3,5), 16);
+        const b = parseInt(formBgColor.slice(5,7), 16);
+        const rgbaValue = `rgba(${r}, ${g}, ${b}, ${(formBgOpacity / 100).toFixed(2)})`;
+        formData.append('transparency_rgba', rgbaValue);
       }
       
       if (logoFile) {
@@ -802,6 +831,83 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                 </div>
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Form Background Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <div className="relative h-10 w-20 rounded border-2 overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
+                    <input
+                      type="color"
+                      value={formBgColor || '#FFFFFF'}
+                      onChange={(e) => {
+                        setFormBgColor(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-pointer"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={formBgColor || '#FFFFFF'}
+                    onChange={(e) => {
+                      setFormBgColor(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder="#FFFFFF"
+                    className="flex-1 border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Form Transparency
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={formBgOpacity}
+                    onChange={(e) => {
+                      setFormBgOpacity(parseInt(e.target.value));
+                      setHasUnsavedChanges(true);
+                    }}
+                    className="flex-1"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={formBgOpacity}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (value >= 0 && value <= 100) {
+                        setFormBgOpacity(value);
+                        setHasUnsavedChanges(true);
+                      }
+                    }}
+                    className="w-20 border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
+                    }}
+                  />
+                  <span className="text-sm font-medium" style={{ color: '#374151' }}>%</span>
+                </div>
+                <small className="text-xs mt-1 block" style={{ color: '#6B7280' }}>0% = transparent, 100% = opaque</small>
+              </div>
             </div>
             
             <div className="mt-4">
@@ -866,7 +972,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           </div>
         )}
         
-        <div className="rounded-lg transition-colors p-8" style={{ backgroundColor: '#FFFFFF', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+        <div className="rounded-lg transition-colors p-8" style={{ backgroundColor: `rgba(${formBgColor ? `${parseInt(formBgColor.slice(1,3), 16)}, ${parseInt(formBgColor.slice(3,5), 16)}, ${parseInt(formBgColor.slice(5,7), 16)}` : '255, 255, 255'}, ${(formBgOpacity / 100).toFixed(2)})`, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
           <div className="mb-6 flex justify-center items-center py-8">
             {logoPreview ? (
               <img 
