@@ -51,6 +51,8 @@ class FormUIController extends Controller
         $validator = Validator::make($request->all(), [
             'page_hex' => 'nullable|string|max:25',
             'button_hex' => 'nullable|string|max:25',
+            'form_hex' => 'nullable|string|max:25',
+            'transparency_rgba' => 'nullable|string|max:50',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'logo_url' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'multi_step' => 'nullable|string|in:active,inactive',
@@ -97,6 +99,20 @@ class FormUIController extends Controller
             $updateData['brand_name'] = $request->input('brand_name');
         } else {
             \Log::info('Does NOT have brand_name');
+        }
+        
+        if ($request->has('form_hex')) {
+            \Log::info('Has form_hex: ' . $request->input('form_hex'));
+            $updateData['form_hex'] = $request->input('form_hex');
+        } else {
+            \Log::info('Does NOT have form_hex');
+        }
+        
+        if ($request->has('transparency_rgba')) {
+            \Log::info('Has transparency_rgba: ' . $request->input('transparency_rgba'));
+            $updateData['transparency_rgba'] = $request->input('transparency_rgba');
+        } else {
+            \Log::info('Does NOT have transparency_rgba');
         }
         
         \Log::info('Final updateData array:', $updateData);

@@ -81,17 +81,20 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
+  const [formBgOpacity, setFormBgOpacity] = useState(100);
   const [buttonColor, setButtonColor] = useState('#3B82F6');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [brandName, setBrandName] = useState<string>('');
-  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: ''});
+  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string; formBgColor: string; formBgOpacity: number}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: '', formBgColor: '', formBgOpacity: 100});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const convertGDriveUrl = (url: string): string => {
@@ -125,6 +128,18 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               setButtonColor(result.data.button_hex);
             }
             
+            if (result.data.form_hex) {
+              setFormBgColor(result.data.form_hex);
+            }
+            
+            if (result.data.transparency_rgba) {
+              const rgbaMatch = result.data.transparency_rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
+              if (rgbaMatch) {
+                const a = rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1;
+                setFormBgOpacity(Math.round(a * 100));
+              }
+            }
+            
             if (result.data.logo_url) {
               const convertedUrl = convertGDriveUrl(result.data.logo_url);
               console.log('Original logo URL:', result.data.logo_url);
@@ -155,6 +170,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setButtonColor(initialEditValues.buttonColor);
       setLogoPreview(initialEditValues.logoPreview);
       setBrandName(initialEditValues.brandName);
+      setFormBgColor(initialEditValues.formBgColor);
+      setFormBgOpacity(initialEditValues.formBgOpacity);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -164,7 +181,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         backgroundColor: backgroundColor,
         buttonColor: buttonColor,
         logoPreview: logoPreview,
-        brandName: brandName
+        brandName: brandName,
+        formBgColor: formBgColor,
+        formBgOpacity: formBgOpacity
       });
       setHasUnsavedChanges(false);
     }
@@ -189,6 +208,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const handleSaveColors = async () => {
     try {
+      setIsSaving(true);
       const formData = new FormData();
       
       if (backgroundColor) {
@@ -196,6 +216,16 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       }
       if (buttonColor) {
         formData.append('button_hex', buttonColor);
+      }
+      if (formBgColor) {
+        formData.append('form_hex', formBgColor);
+      }
+      if (formBgColor && formBgOpacity !== null) {
+        const r = parseInt(formBgColor.slice(1,3), 16);
+        const g = parseInt(formBgColor.slice(3,5), 16);
+        const b = parseInt(formBgColor.slice(5,7), 16);
+        const rgbaValue = `rgba(${r}, ${g}, ${b}, ${(formBgOpacity / 100).toFixed(2)})`;
+        formData.append('transparency_rgba', rgbaValue);
       }
       if (logoFile) {
         formData.append('logo', logoFile);
@@ -220,20 +250,16 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         const result = await response.json();
         if (result.success) {
           setHasUnsavedChanges(false);
-          alert('Settings saved successfully!');
           if (onEditModeChange) {
             onEditModeChange(false);
           }
-        } else {
-          alert('Failed to save settings: ' + (result.message || 'Unknown error'));
+          setShowSaveSuccessModal(true);
         }
-      } else {
-        const errorData = await response.json();
-        alert('Failed to save settings: ' + (errorData.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Error saving settings. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1345,7 +1371,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               <h3 className="text-lg font-semibold" style={{ color: '#1F2937' }}>Edit</h3>
               <button
                 onClick={handleSaveColors}
-                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save
               </button>
@@ -1459,6 +1486,83 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                   />
                 </div>
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Form Background Color
+                </label>
+                <div className="flex items-center space-x-3">
+                  <div className="relative h-10 w-20 rounded border-2 overflow-hidden" style={{ borderColor: '#E5E7EB' }}>
+                    <input
+                      type="color"
+                      value={formBgColor || '#FFFFFF'}
+                      onChange={(e) => {
+                        setFormBgColor(e.target.value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-pointer"
+                      style={{ border: 'none' }}
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    value={formBgColor || '#FFFFFF'}
+                    onChange={(e) => {
+                      setFormBgColor(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
+                    placeholder="#FFFFFF"
+                    className="flex-1 border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
+                    }}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Form Transparency
+                </label>
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={formBgOpacity}
+                    onChange={(e) => {
+                      setFormBgOpacity(parseInt(e.target.value));
+                      setHasUnsavedChanges(true);
+                    }}
+                    className="flex-1"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={formBgOpacity}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value);
+                      if (value >= 0 && value <= 100) {
+                        setFormBgOpacity(value);
+                        setHasUnsavedChanges(true);
+                      }
+                    }}
+                    className="w-20 border-2 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#F9FAFB',
+                      color: '#1F2937'
+                    }}
+                  />
+                  <span className="text-sm font-medium" style={{ color: '#374151' }}>%</span>
+                </div>
+                <small className="text-xs mt-1 block" style={{ color: '#6B7280' }}>0% = transparent, 100% = opaque</small>
+              </div>
             </div>
             
             <div className="mt-4">
@@ -1523,7 +1627,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           </div>
         )}
         
-        <div className="rounded-lg p-8" style={{ backgroundColor: '#FFFFFF', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+        <div className="rounded-lg p-8" style={{ backgroundColor: `rgba(${formBgColor ? `${parseInt(formBgColor.slice(1,3), 16)}, ${parseInt(formBgColor.slice(3,5), 16)}, ${parseInt(formBgColor.slice(5,7), 16)}` : '255, 255, 255'}, ${(formBgOpacity / 100).toFixed(2)})`, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
           <div className="mb-6 flex justify-center items-center py-8">
             {logoPreview ? (
               <img 
@@ -1608,6 +1712,36 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
       </div>
       
+      {isSaving && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+            </div>
+            <p className="text-center font-medium text-gray-900">Saving settings...</p>
+            <p className="text-center text-sm mt-2 text-gray-600">Please wait while we save your changes.</p>
+          </div>
+        </div>
+      )}
+
+      {showSaveSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <button
+              onClick={() => setShowSaveSuccessModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2 mt-4">Settings Saved!</h3>
+            <p className="text-center text-gray-600 mb-4">Your settings have been saved successfully.</p>
+          </div>
+        </div>
+      )}
+
       {isSubmitting && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
