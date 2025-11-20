@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ApplicationDocument;
 use App\Services\TableCheckService;
+use App\Services\ImageResizeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -56,8 +57,39 @@ class ApplicationDocumentController extends Controller
             mkdir($destinationPath, 0755, true);
         }
         
-        // Move the file to the public assets directory
-        $file->move($destinationPath, $fileName);
+        $finalPath = $destinationPath . '/' . $fileName;
+        
+        // Check if file is an image and resize if needed
+        if (ImageResizeService::isImageFile($fileType)) {
+            Log::info('Image detected - applying active resize settings', [
+                'file_name' => $originalName,
+                'mime_type' => $fileType,
+                'destination' => 'backend'
+            ]);
+            
+            $tempPath = $file->getPathname();
+            $resized = ImageResizeService::resizeImage($tempPath, $finalPath);
+            
+            if ($resized) {
+                Log::info('Image successfully resized for backend storage', [
+                    'file_name' => $fileName,
+                    'original_size' => $fileSize,
+                    'resized_size' => filesize($finalPath)
+                ]);
+            } else {
+                Log::warning('Image resize failed, saving original', ['file_name' => $fileName]);
+                // If resize fails, fallback to normal file move
+                $file->move($destinationPath, $fileName);
+            }
+            
+            // Update file size after resize
+            if (file_exists($finalPath)) {
+                $fileSize = filesize($finalPath);
+            }
+        } else {
+            // Not an image, move as normal
+            $file->move($destinationPath, $fileName);
+        }
         
         // Create the document record
         $document = ApplicationDocument::create([

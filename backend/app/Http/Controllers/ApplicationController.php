@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Plan;
 use App\Models\PromoList;
 use App\Services\GoogleDriveService;
+use App\Services\ImageResizeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +19,7 @@ class ApplicationController extends Controller
     public function __construct(GoogleDriveService $googleDriveService)
     {
         $this->googleDriveService = $googleDriveService;
-    }
+    }   
 
     public function store(Request $request)
     {
@@ -58,6 +59,11 @@ class ApplicationController extends Controller
             $fullName = trim($request->firstName . ' ' . ($request->middleInitial ? $request->middleInitial . '. ' : '') . $request->lastName);
 
             $localDocumentPaths = $this->handleLocalDocumentUploads($request);
+            
+            Log::info('Local document paths ready for Google Drive', [
+                'count' => count($localDocumentPaths),
+                'paths' => $localDocumentPaths
+            ]);
             
             $googleDriveUrls = [];
             try {
@@ -191,6 +197,8 @@ class ApplicationController extends Controller
 
     private function handleLocalDocumentUploads(Request $request)
     {
+        Log::info('=== STARTING LOCAL DOCUMENT UPLOADS ===');
+        
         $documentPaths = [];
 
         $documentMappings = [
@@ -209,14 +217,63 @@ class ApplicationController extends Controller
         }
 
         foreach ($documentMappings as $requestKey => $fieldKey) {
+            Log::info("Checking for file: {$requestKey}", [
+                'has_file' => $request->hasFile($requestKey)
+            ]);
+            
             if ($request->hasFile($requestKey)) {
                 try {
                     $file = $request->file($requestKey);
                     $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    $finalPath = $documentsPath . '/' . $fileName;
+                    $fileType = $file->getClientMimeType();
                     
-                    if ($file->move($documentsPath, $fileName)) {
-                        $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                        Log::info("Successfully uploaded locally: {$fileName} for {$requestKey}");
+                    Log::info("Processing file: {$requestKey}", [
+                        'file_name' => $fileName,
+                        'mime_type' => $fileType,
+                        'is_image' => ImageResizeService::isImageFile($fileType)
+                    ]);
+                    
+                    // Check if file is an image and resize if needed
+                    if (ImageResizeService::isImageFile($fileType)) {
+                        Log::info('Image detected - applying active resize settings', [
+                            'field' => $requestKey,
+                            'file_name' => $fileName,
+                            'mime_type' => $fileType,
+                            'destination' => 'backend + Google Drive'
+                        ]);
+                        
+                        $originalSize = filesize($file->getPathname());
+                        $tempPath = $file->getPathname();
+                        $resized = ImageResizeService::resizeImage($tempPath, $finalPath);
+                        
+                        if ($resized) {
+                            $resizedSize = filesize($finalPath);
+                            $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
+                            Log::info('Image successfully resized for backend storage', [
+                                'field' => $requestKey,
+                                'file_name' => $fileName,
+                                'original_size' => $originalSize,
+                                'resized_size' => $resizedSize,
+                                'reduction' => round((($originalSize - $resizedSize) / $originalSize) * 100, 2) . '%'
+                            ]);
+                        } else {
+                            Log::warning('Image resize failed, saving original', [
+                                'field' => $requestKey,
+                                'file_name' => $fileName
+                            ]);
+                            // If resize fails, fallback to normal file move
+                            if ($file->move($documentsPath, $fileName)) {
+                                $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
+                                Log::info("Successfully uploaded locally (resize skipped): {$fileName} for {$requestKey}");
+                            }
+                        }
+                    } else {
+                        // Not an image, move as normal
+                        if ($file->move($documentsPath, $fileName)) {
+                            $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
+                            Log::info("Successfully uploaded locally: {$fileName} for {$requestKey}");
+                        }
                     }
                 } catch (\Exception $e) {
                     Log::error("Failed to upload locally {$requestKey}: " . $e->getMessage());
@@ -224,6 +281,11 @@ class ApplicationController extends Controller
                 }
             }
         }
+        
+        Log::info('=== LOCAL DOCUMENT UPLOADS COMPLETED ===', [
+            'files_processed' => count($documentPaths),
+            'paths' => $documentPaths
+        ]);
 
         return $documentPaths;
     }

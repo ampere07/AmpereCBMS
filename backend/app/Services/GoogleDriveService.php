@@ -7,6 +7,7 @@ use Google\Service\Drive;
 use Google\Service\Drive\DriveFile;
 use Google\Service\Drive\Permission;
 use Illuminate\Support\Facades\Log;
+use App\Services\ImageResizeService;
 
 class GoogleDriveService
 {
@@ -141,13 +142,28 @@ class GoogleDriveService
         try {
             $fileName = $this->generateFileName($fieldName, $filePath);
             $mimeType = mime_content_type($filePath);
-
-            Log::info("Uploading file to folder", [
-                'name' => $fileName,
-                'folder_id' => $folderId,
-                'mime' => $mimeType,
-                'size' => filesize($filePath)
-            ]);
+            $fileSize = filesize($filePath);
+            
+            // Check if this is a resized image
+            $isImage = ImageResizeService::isImageFile($mimeType);
+            
+            if ($isImage) {
+                Log::info('Uploading resized image to Google Drive', [
+                    'field' => $fieldName,
+                    'name' => $fileName,
+                    'folder_id' => $folderId,
+                    'mime' => $mimeType,
+                    'size' => $fileSize,
+                    'note' => 'Image was resized based on active settings before upload'
+                ]);
+            } else {
+                Log::info("Uploading file to folder", [
+                    'name' => $fileName,
+                    'folder_id' => $folderId,
+                    'mime' => $mimeType,
+                    'size' => $fileSize
+                ]);
+            }
 
             $fileMetadata = new DriveFile([
                 'name' => $fileName,
@@ -232,13 +248,27 @@ class GoogleDriveService
 
             $fileName = 'logo_' . time() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
             $mimeType = mime_content_type($filePath);
-
-            Log::info('Uploading logo file', [
-                'name' => $fileName,
-                'folder_id' => $logoFolderId,
-                'mime' => $mimeType,
-                'size' => filesize($filePath)
-            ]);
+            $fileSize = filesize($filePath);
+            
+            // Check if this is an image (logos are typically images)
+            $isImage = ImageResizeService::isImageFile($mimeType);
+            
+            if ($isImage) {
+                Log::info('Uploading resized logo image to Google Drive', [
+                    'name' => $fileName,
+                    'folder_id' => $logoFolderId,
+                    'mime' => $mimeType,
+                    'size' => $fileSize,
+                    'note' => 'Logo was resized based on active settings before upload'
+                ]);
+            } else {
+                Log::info('Uploading logo file', [
+                    'name' => $fileName,
+                    'folder_id' => $logoFolderId,
+                    'mime' => $mimeType,
+                    'size' => $fileSize
+                ]);
+            }
 
             $fileMetadata = new DriveFile([
                 'name' => $fileName,
