@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use App\Services\GoogleDriveService;
+use App\Services\ImageResizeService;
 
 class FormUIController extends Controller
 {
@@ -120,23 +121,67 @@ class FormUIController extends Controller
         if ($request->hasFile('logo') || $request->hasFile('logo_url')) {
             try {
                 $logoFile = $request->file('logo') ?: $request->file('logo_url');
-                $tempPath = $logoFile->getRealPath();
-                
+                $fileType = $logoFile->getClientMimeType();
                 $brandName = $request->input('brand_name');
                 
+                // Create temp directory for resized logo
+                $tempDir = public_path('assets/temp');
+                if (!file_exists($tempDir)) {
+                    mkdir($tempDir, 0755, true);
+                }
+                
+                $fileName = 'logo_' . time() . '.' . $logoFile->getClientOriginalExtension();
+                $finalPath = $tempDir . '/' . $fileName;
+                
+                // Check if logo is an image and resize if needed
+                if (ImageResizeService::isImageFile($fileType)) {
+                    \Log::info('Logo image detected - applying active resize settings', [
+                        'file_name' => $fileName,
+                        'mime_type' => $fileType,
+                        'destination' => 'Google Drive',
+                        'brand_name' => $brandName
+                    ]);
+                    
+                    $originalSize = filesize($logoFile->getPathname());
+                    $tempPath = $logoFile->getPathname();
+                    $resized = ImageResizeService::resizeImage($tempPath, $finalPath);
+                    
+                    if ($resized) {
+                        $resizedSize = filesize($finalPath);
+                        \Log::info('Logo successfully resized before Google Drive upload', [
+                            'file_name' => $fileName,
+                            'original_size' => $originalSize,
+                            'resized_size' => $resizedSize,
+                            'reduction' => round((($originalSize - $resizedSize) / $originalSize) * 100, 2) . '%'
+                        ]);
+                    } else {
+                        \Log::warning('Logo resize failed, uploading original', ['file_name' => $fileName]);
+                        // If resize fails, save the original
+                        $logoFile->move($tempDir, $fileName);
+                    }
+                } else {
+                    // Not an image, move as normal
+                    $logoFile->move($tempDir, $fileName);
+                }
+                
                 \Log::info('Uploading logo to Google Drive', [
-                    'file_size' => filesize($tempPath),
+                    'file_size' => filesize($finalPath),
                     'brand_name' => $brandName
                 ]);
                 
                 $googleDriveService = new GoogleDriveService();
-                $driveUrl = $googleDriveService->uploadFormLogo($tempPath, $brandName);
+                $driveUrl = $googleDriveService->uploadFormLogo($finalPath, $brandName);
                 
                 $updateData['logo_url'] = $driveUrl;
                 
                 \Log::info('Logo uploaded to Google Drive successfully', [
                     'drive_url' => $driveUrl
                 ]);
+                
+                // Clean up temp file
+                if (file_exists($finalPath)) {
+                    unlink($finalPath);
+                }
                 
             } catch (\Exception $e) {
                 \Log::error('Failed to upload logo to Google Drive: ' . $e->getMessage());
