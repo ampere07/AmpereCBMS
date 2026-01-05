@@ -20,12 +20,8 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3001',
-        'http://127.0.0.1:3001',
         'https://apply.atssfiber.ph',
-        'http://apply.atssfiber.ph'
+        'https://backend1.atssfiber.ph',
     ],
 
     'allowed_origins_patterns' => [],

@@ -39,9 +39,10 @@ class GoogleDriveService
     public function uploadApplicationDocuments($fullName, $files)
     {
         try {
-            Log::info('Starting Google Drive upload with folder creation', [
+            Log::info('=== STEP 2: STARTING GOOGLE DRIVE UPLOAD ===', [
                 'applicant' => $fullName,
-                'parent_folder_id' => $this->folderId
+                'parent_folder_id' => $this->folderId,
+                'note' => 'All images have already been resized in Step 1'
             ]);
 
             $applicantFolderId = $this->createApplicantFolder($fullName);
@@ -50,7 +51,7 @@ class GoogleDriveService
                 throw new \Exception('Failed to create applicant folder');
             }
 
-            Log::info('Applicant folder created', ['folder_id' => $applicantFolderId]);
+            Log::info('Applicant folder created in Google Drive', ['folder_id' => $applicantFolderId]);
 
             $uploadedUrls = [];
 
@@ -81,7 +82,7 @@ class GoogleDriveService
                     if ($fileId) {
                         $viewUrl = "https://drive.google.com/file/d/{$fileId}/view";
                         $uploadedUrls[$dbFieldName] = $viewUrl;
-                        Log::info("Successfully uploaded {$fieldName}", [
+                        Log::info("Successfully uploaded to Google Drive: {$fieldName}", [
                             'file_id' => $fileId,
                             'url' => $viewUrl
                         ]);
@@ -91,7 +92,7 @@ class GoogleDriveService
                 }
             }
 
-            Log::info('Google Drive upload completed', [
+            Log::info('=== STEP 2 COMPLETED: ALL RESIZED IMAGES UPLOADED TO GOOGLE DRIVE ===', [
                 'applicant' => $fullName,
                 'folder_id' => $applicantFolderId,
                 'files_uploaded' => count($uploadedUrls)
@@ -144,24 +145,25 @@ class GoogleDriveService
             $mimeType = mime_content_type($filePath);
             $fileSize = filesize($filePath);
             
-            // Check if this is a resized image
             $isImage = ImageResizeService::isImageFile($mimeType);
             
             if ($isImage) {
-                Log::info('Uploading resized image to Google Drive', [
+                Log::info('Uploading RESIZED image to Google Drive', [
                     'field' => $fieldName,
-                    'name' => $fileName,
+                    'file_name' => $fileName,
                     'folder_id' => $folderId,
-                    'mime' => $mimeType,
-                    'size' => $fileSize,
-                    'note' => 'Image was resized based on active settings before upload'
+                    'mime_type' => $mimeType,
+                    'resized_file_size' => $fileSize . ' bytes',
+                    'note' => 'This image was already resized in Step 1 based on active settings from settings_image_size table'
                 ]);
             } else {
-                Log::info("Uploading file to folder", [
-                    'name' => $fileName,
+                Log::info('Uploading file to Google Drive', [
+                    'field' => $fieldName,
+                    'file_name' => $fileName,
                     'folder_id' => $folderId,
-                    'mime' => $mimeType,
-                    'size' => $fileSize
+                    'mime_type' => $mimeType,
+                    'file_size' => $fileSize . ' bytes',
+                    'note' => 'PDF file - no resizing applied'
                 ]);
             }
 
@@ -250,7 +252,6 @@ class GoogleDriveService
             $mimeType = mime_content_type($filePath);
             $fileSize = filesize($filePath);
             
-            // Check if this is an image (logos are typically images)
             $isImage = ImageResizeService::isImageFile($mimeType);
             
             if ($isImage) {

@@ -2,25 +2,24 @@
 
 namespace App\Services;
 
-use App\Models\ImageSizeSetting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ImageResizeService
 {
     public static function resizeImage($sourcePath, $destinationPath)
     {
-        $setting = ImageSizeSetting::getActiveSetting();
+        $setting = self::getActiveSetting();
         
         Log::info('=== IMAGE RESIZE SERVICE CALLED ===', [
             'source' => $sourcePath,
             'destination' => $destinationPath,
-            'active_settings_found' => $setting ? 'YES' : 'NO',
-            'max_width' => $setting ? $setting->max_width : 'N/A',
-            'max_height' => $setting ? $setting->max_height : 'N/A',
-            'quality' => $setting ? $setting->quality : 'N/A'
+            'active_setting_found' => $setting ? 'YES' : 'NO',
+            'resize_percentage' => $setting ? $setting->image_size_value . '%' : 'N/A',
+            'status' => $setting ? $setting->status : 'N/A'
         ]);
         
-        if (!$setting) {
+        if (!$setting || $setting->status !== 'active') {
             Log::warning('No active image size setting found. Skipping resize.');
             return false;
         }
@@ -39,20 +38,16 @@ class ImageResizeService
             'type' => $imageType
         ]);
 
-        if ($originalWidth <= $setting->max_width && $originalHeight <= $setting->max_height) {
-            Log::info('Image already within size limits, copying without resize');
-            copy($sourcePath, $destinationPath);
-            return true;
-        }
-
-        $ratio = min($setting->max_width / $originalWidth, $setting->max_height / $originalHeight);
-        $newWidth = round($originalWidth * $ratio);
-        $newHeight = round($originalHeight * $ratio);
+        $resizePercentage = $setting->image_size_value / 100;
+        $newWidth = round($originalWidth * $resizePercentage);
+        $newHeight = round($originalHeight * $resizePercentage);
         
-        Log::info('Resizing image', [
+        Log::info('Resizing image based on percentage', [
+            'percentage' => $setting->image_size_value . '%',
             'new_width' => $newWidth,
             'new_height' => $newHeight,
-            'ratio' => $ratio
+            'original_width' => $originalWidth,
+            'original_height' => $originalHeight
         ]);
 
         $sourceImage = self::createImageFromType($sourcePath, $imageType);
@@ -80,7 +75,8 @@ class ImageResizeService
             $originalHeight
         );
 
-        $result = self::saveImageByType($resizedImage, $destinationPath, $imageType, $setting->quality);
+        $quality = 85;
+        $result = self::saveImageByType($resizedImage, $destinationPath, $imageType, $quality);
         
         Log::info('Image resize completed', [
             'success' => $result,
@@ -91,6 +87,13 @@ class ImageResizeService
         imagedestroy($resizedImage);
 
         return $result;
+    }
+
+    private static function getActiveSetting()
+    {
+        return DB::table('settings_image_size')
+            ->where('status', 'active')
+            ->first();
     }
 
     private static function createImageFromType($path, $imageType)

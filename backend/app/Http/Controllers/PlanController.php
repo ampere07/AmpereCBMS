@@ -19,17 +19,23 @@ class PlanController extends Controller
     public function index()
     {
         try {
+            Log::info('=== PlanController index START ===');
+            
+            Log::info('Querying plan_list table');
             $plans = Plan::orderBy('plan_name', 'asc')->get();
+            Log::info('Plans fetched', ['count' => $plans->count()]);
 
+            Log::info('=== PlanController index SUCCESS ===');
             return response()->json([
                 'success' => true,
                 'data' => $plans
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve plans', [
-                'error' => $e->getMessage()
-            ]);
+            Log::error('=== PlanController index ERROR ===');
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ':' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
@@ -42,18 +48,21 @@ class PlanController extends Controller
     public function show($id)
     {
         try {
+            Log::info('=== PlanController show START ===', ['id' => $id]);
+            
             $plan = Plan::findOrFail($id);
+            Log::info('Plan found', ['plan' => $plan]);
 
+            Log::info('=== PlanController show SUCCESS ===');
             return response()->json([
                 'success' => true,
                 'data' => $plan
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to retrieve plan', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            Log::error('=== PlanController show ERROR ===');
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ':' . $e->getLine());
 
             return response()->json([
                 'success' => false,
@@ -66,6 +75,8 @@ class PlanController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::info('=== PlanController store START ===', ['data' => $request->all()]);
+            
             $validator = Validator::make($request->all(), [
                 'plan_name' => 'required|string|max:255|unique:plan_list,plan_name',
                 'description' => 'nullable|string',
@@ -73,6 +84,7 @@ class PlanController extends Controller
             ]);
 
             if ($validator->fails()) {
+                Log::warning('Validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
@@ -81,6 +93,7 @@ class PlanController extends Controller
             }
 
             $currentUserId = $this->getCurrentUserId();
+            Log::info('Current user ID', ['user_id' => $currentUserId]);
 
             $plan = Plan::create([
                 'plan_name' => $request->plan_name,
@@ -90,6 +103,9 @@ class PlanController extends Controller
                 'modified_date' => now(),
             ]);
 
+            Log::info('Plan created', ['plan' => $plan]);
+            Log::info('=== PlanController store SUCCESS ===');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Plan created successfully',
@@ -97,9 +113,10 @@ class PlanController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            Log::error('Failed to create plan', [
-                'error' => $e->getMessage()
-            ]);
+            Log::error('=== PlanController store ERROR ===');
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ':' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
@@ -112,6 +129,8 @@ class PlanController extends Controller
     public function update(Request $request, $id)
     {
         try {
+            Log::info('=== PlanController update START ===', ['id' => $id, 'data' => $request->all()]);
+            
             $plan = Plan::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
@@ -121,6 +140,7 @@ class PlanController extends Controller
             ]);
 
             if ($validator->fails()) {
+                Log::warning('Validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
@@ -138,6 +158,9 @@ class PlanController extends Controller
                 ]
             ));
 
+            Log::info('Plan updated', ['plan' => $plan]);
+            Log::info('=== PlanController update SUCCESS ===');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Plan updated successfully',
@@ -145,10 +168,10 @@ class PlanController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to update plan', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            Log::error('=== PlanController update ERROR ===');
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ':' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
 
             return response()->json([
                 'success' => false,
@@ -161,8 +184,13 @@ class PlanController extends Controller
     public function destroy($id)
     {
         try {
+            Log::info('=== PlanController destroy START ===', ['id' => $id]);
+            
             $plan = Plan::findOrFail($id);
             $plan->delete();
+
+            Log::info('Plan deleted successfully');
+            Log::info('=== PlanController destroy SUCCESS ===');
 
             return response()->json([
                 'success' => true,
@@ -170,10 +198,9 @@ class PlanController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to delete plan', [
-                'id' => $id,
-                'error' => $e->getMessage()
-            ]);
+            Log::error('=== PlanController destroy ERROR ===');
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile() . ':' . $e->getLine());
 
             return response()->json([
                 'success' => false,

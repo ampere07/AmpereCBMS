@@ -40,13 +40,13 @@ class ApplicationController extends Controller
                 'referredBy' => 'nullable|string|max:255',
                 'plan' => 'required|string|max:255',
                 'promo' => 'nullable|string|max:255',
-                'proofOfBilling' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'governmentIdSecondary' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:2048',
-                'nearestLandmark1Image' => 'required|file|mimes:jpg,jpeg,png|max:2048',
-                'nearestLandmark2Image' => 'required|file|mimes:jpg,jpeg,png|max:2048',
-                'promoProof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'proofOfBilling' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'governmentIdSecondary' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+                'nearestLandmark1Image' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+                'nearestLandmark2Image' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+                'promoProof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
             ]);
 
             if ($validator->fails()) {
@@ -58,42 +58,46 @@ class ApplicationController extends Controller
 
             $fullName = trim($request->firstName . ' ' . ($request->middleInitial ? $request->middleInitial . '. ' : '') . $request->lastName);
 
+            Log::info('=== APPLICATION FORM SUBMITTED ===', [
+                'applicant' => $fullName,
+                'email' => $request->email
+            ]);
+
             $localDocumentPaths = $this->handleLocalDocumentUploads($request);
             
-            Log::info('Local document paths ready for Google Drive', [
+            Log::info('All images resized and saved locally, ready for Google Drive upload', [
                 'count' => count($localDocumentPaths),
                 'paths' => $localDocumentPaths
             ]);
             
             $googleDriveUrls = [];
             try {
-                Log::info('=== GOOGLE DRIVE UPLOAD START ===');
-                Log::info('Full Name: ' . $fullName);
+                Log::info('=== UPLOADING RESIZED IMAGES TO GOOGLE DRIVE ===');
+                Log::info('Applicant: ' . $fullName);
                 
                 $filesToUpload = [];
                 
                 foreach ($localDocumentPaths as $fieldName => $localPath) {
                     if ($localPath) {
                         $fullPath = public_path($localPath);
-                        Log::info("Checking file: {$fieldName}", [
+                        Log::info("Preparing resized image for upload: {$fieldName}", [
                             'path' => $fullPath,
                             'exists' => file_exists($fullPath),
-                            'readable' => is_readable($fullPath),
                             'size' => file_exists($fullPath) ? filesize($fullPath) : 0
                         ]);
                         $filesToUpload[$fieldName] = $fullPath;
                     }
                 }
 
-                Log::info('Files to upload', [
+                Log::info('Resized images ready for upload', [
                     'count' => count($filesToUpload),
                     'files' => array_keys($filesToUpload)
                 ]);
 
                 if (count($filesToUpload) > 0) {
-                    Log::info('Calling GoogleDriveService...');
+                    Log::info('Uploading resized images to Google Drive...');
                     $googleDriveUrls = $this->googleDriveService->uploadApplicationDocuments($fullName, $filesToUpload);
-                    Log::info('Google Drive URLs received', ['urls' => $googleDriveUrls]);
+                    Log::info('Google Drive upload completed', ['urls' => $googleDriveUrls]);
                 } else {
                     Log::warning('No files to upload to Google Drive');
                 }
@@ -197,7 +201,7 @@ class ApplicationController extends Controller
 
     private function handleLocalDocumentUploads(Request $request)
     {
-        Log::info('=== STARTING LOCAL DOCUMENT UPLOADS ===');
+        Log::info('=== STEP 1: RESIZE AND SAVE IMAGES LOCALLY ===');
         
         $documentPaths = [];
 
@@ -214,77 +218,76 @@ class ApplicationController extends Controller
         $documentsPath = public_path('assets/documents');
         if (!file_exists($documentsPath)) {
             mkdir($documentsPath, 0755, true);
+            Log::info('Created documents directory', ['path' => $documentsPath]);
         }
 
         foreach ($documentMappings as $requestKey => $fieldKey) {
-            Log::info("Checking for file: {$requestKey}", [
-                'has_file' => $request->hasFile($requestKey)
-            ]);
-            
             if ($request->hasFile($requestKey)) {
                 try {
                     $file = $request->file($requestKey);
+                    $originalName = $file->getClientOriginalName();
                     $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                     $finalPath = $documentsPath . '/' . $fileName;
                     $fileType = $file->getClientMimeType();
+                    $originalSize = $file->getSize();
                     
-                    Log::info("Processing file: {$requestKey}", [
+                    Log::info("Processing {$requestKey}", [
+                        'original_name' => $originalName,
                         'file_name' => $fileName,
                         'mime_type' => $fileType,
+                        'original_size' => $originalSize,
                         'is_image' => ImageResizeService::isImageFile($fileType)
                     ]);
                     
-                    // Check if file is an image and resize if needed
                     if (ImageResizeService::isImageFile($fileType)) {
-                        Log::info('Image detected - applying active resize settings', [
-                            'field' => $requestKey,
-                            'file_name' => $fileName,
-                            'mime_type' => $fileType,
-                            'destination' => 'backend + Google Drive'
-                        ]);
+                        Log::info("Image detected: {$requestKey} - Attempting to resize based on active settings");
                         
-                        $originalSize = filesize($file->getPathname());
                         $tempPath = $file->getPathname();
                         $resized = ImageResizeService::resizeImage($tempPath, $finalPath);
                         
-                        if ($resized) {
+                        if ($resized && file_exists($finalPath)) {
                             $resizedSize = filesize($finalPath);
                             $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                            Log::info('Image successfully resized for backend storage', [
-                                'field' => $requestKey,
+                            
+                            Log::info("SUCCESS: Image resized for {$requestKey}", [
                                 'file_name' => $fileName,
-                                'original_size' => $originalSize,
-                                'resized_size' => $resizedSize,
-                                'reduction' => round((($originalSize - $resizedSize) / $originalSize) * 100, 2) . '%'
+                                'original_size' => $originalSize . ' bytes',
+                                'resized_size' => $resizedSize . ' bytes',
+                                'reduction_percentage' => round((($originalSize - $resizedSize) / $originalSize) * 100, 2) . '%',
+                                'saved_path' => $documentPaths[$fieldKey]
                             ]);
                         } else {
-                            Log::warning('Image resize failed, saving original', [
-                                'field' => $requestKey,
+                            Log::warning("Resize failed for {$requestKey}, saving original image", [
                                 'file_name' => $fileName
                             ]);
-                            // If resize fails, fallback to normal file move
+                            
                             if ($file->move($documentsPath, $fileName)) {
                                 $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                                Log::info("Successfully uploaded locally (resize skipped): {$fileName} for {$requestKey}");
+                                Log::info("Original image saved: {$fileName} for {$requestKey}");
                             }
                         }
                     } else {
-                        // Not an image, move as normal
+                        Log::info("Non-image file detected: {$requestKey} (PDF) - Saving without resize");
+                        
                         if ($file->move($documentsPath, $fileName)) {
                             $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                            Log::info("Successfully uploaded locally: {$fileName} for {$requestKey}");
+                            Log::info("File saved: {$fileName} for {$requestKey}");
                         }
                     }
                 } catch (\Exception $e) {
-                    Log::error("Failed to upload locally {$requestKey}: " . $e->getMessage());
+                    Log::error("Failed to process {$requestKey}: " . $e->getMessage(), [
+                        'trace' => $e->getTraceAsString()
+                    ]);
                     $documentPaths[$fieldKey] = null;
                 }
+            } else {
+                Log::info("No file uploaded for {$requestKey}");
             }
         }
         
-        Log::info('=== LOCAL DOCUMENT UPLOADS COMPLETED ===', [
-            'files_processed' => count($documentPaths),
-            'paths' => $documentPaths
+        Log::info('=== STEP 1 COMPLETED: ALL IMAGES RESIZED ===', [
+            'total_files_processed' => count($documentPaths),
+            'files' => array_keys($documentPaths)
         ]);
 
         return $documentPaths;

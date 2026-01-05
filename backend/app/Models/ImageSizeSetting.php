@@ -12,18 +12,18 @@ class ImageSizeSetting extends Model
     protected $table = 'settings_image_size';
 
     protected $fillable = [
-        'max_width',
-        'max_height',
-        'quality',
-        'is_active'
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
+        'image_size',
+        'image_size_value',
+        'status'
     ];
 
     public static function getActiveSetting()
     {
-        return self::where('is_active', true)->first();
+        return self::where('status', 'active')->first();
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active');
     }
 }
