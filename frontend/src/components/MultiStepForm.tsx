@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import LoadingModal from './Loading/LoadingModal';
 
 interface Region {
   id: number;
@@ -1713,15 +1714,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       </div>
       
       {isSaving && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-            </div>
-            <p className="text-center font-medium text-gray-900">Saving settings...</p>
-            <p className="text-center text-sm mt-2 text-gray-600">Please wait while we save your changes.</p>
-          </div>
-        </div>
+        <LoadingModal 
+          message="Saving settings..." 
+          submessage="Please wait while we save your changes."
+          spinnerColor="green"
+        />
       )}
 
       {showSaveSuccessModal && (
@@ -1743,15 +1740,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       )}
 
       {isSubmitting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-            <p className="text-center font-medium text-gray-900">Submitting your application...</p>
-            <p className="text-center text-sm mt-2 text-gray-600">Please wait while we process your form.</p>
-          </div>
-        </div>
+        <LoadingModal 
+          message="Submitting your application..." 
+          submessage="Please wait while we process your form."
+          spinnerColor="blue"
+        />
       )}
 
       {showValidationModal && (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import API_CONFIG from '../config/api';
+import LoadingModal from '../components/Loading/LoadingModal';
 
 interface Region {
   id: number;
@@ -122,7 +123,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`);
         if (response.ok) {
           const result = await response.json();
-          console.log('Fetched UI settings:', result);
           if (result.success && result.data) {
             if (result.data.page_hex) {
               setBackgroundColor(result.data.page_hex);
@@ -146,8 +146,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             
             if (result.data.logo_url) {
               const convertedUrl = convertGDriveUrl(result.data.logo_url);
-              console.log('Original logo URL:', result.data.logo_url);
-              console.log('Converted logo URL:', convertedUrl);
               setLogoPreview(convertedUrl);
             }
             
@@ -1654,15 +1652,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       </div>
       
       {isSubmitting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-            <p className="text-center font-medium" style={{ color: getTextColor() }}>Submitting your application...</p>
-            <p className="text-center text-sm mt-2" style={{ color: getTextColor(), opacity: 0.7 }}>Please wait while we process your form.</p>
-          </div>
-        </div>
+        <LoadingModal 
+          message="Submitting your application..." 
+          submessage="Please wait while we process your form."
+          spinnerColor="blue"
+        />
       )}
 
       {showSuccessModal && (
@@ -1686,14 +1680,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       )}
 
       {isSavingSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
-            <div className="flex items-center justify-center mb-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
-            </div>
-            <p className="text-center text-gray-700 font-medium">Saving settings...</p>
-          </div>
-        </div>
+        <LoadingModal 
+          message="Saving settings..." 
+          spinnerColor="blue"
+        />
       )}
 
       {showSaveSuccessModal && (
