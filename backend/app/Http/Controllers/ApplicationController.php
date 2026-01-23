@@ -3,24 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\ImageQueue;
 use App\Models\Plan;
 use App\Models\PromoList;
-use App\Services\GoogleDriveService;
 use App\Services\ImageResizeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ApplicationController extends Controller
 {
-    protected $googleDriveService;
-
-    public function __construct(GoogleDriveService $googleDriveService)
-    {
-        $this->googleDriveService = $googleDriveService;
-    }   
-
     public function store(Request $request)
     {
         try {
@@ -64,129 +57,122 @@ class ApplicationController extends Controller
                 'email' => $request->email
             ]);
 
-            $localDocumentPaths = $this->handleLocalDocumentUploads($request);
-            
-            Log::info('All images resized and saved locally, ready for Google Drive upload', [
-                'count' => count($localDocumentPaths),
-                'paths' => $localDocumentPaths
-            ]);
-            
-            $googleDriveUrls = [];
+            DB::beginTransaction();
+
             try {
-                Log::info('=== UPLOADING RESIZED IMAGES TO GOOGLE DRIVE ===');
-                Log::info('Applicant: ' . $fullName);
+                $application = new Application();
                 
-                $filesToUpload = [];
+                $application->timestamp = now();
+                $application->email_address = $request->email;
+                $application->mobile_number = $request->mobile;
+                $application->first_name = $request->firstName;
+                $application->last_name = $request->lastName;
+                $application->middle_initial = $request->middleInitial;
+                $application->secondary_mobile_number = $request->secondaryMobile;
+                $application->region = $request->region;
+                $application->city = $request->city;
+                $application->barangay = $request->barangay;
+                $application->location = $request->location;
+                $application->installation_address = $request->installationAddress;
+                $application->long_lat = $request->coordinates;
+                $application->landmark = $request->landmark;
+                $application->referred_by = $request->referredBy;
                 
-                foreach ($localDocumentPaths as $fieldName => $localPath) {
-                    if ($localPath) {
-                        $fullPath = public_path($localPath);
-                        Log::info("Preparing resized image for upload: {$fieldName}", [
-                            'path' => $fullPath,
-                            'exists' => file_exists($fullPath),
-                            'size' => file_exists($fullPath) ? filesize($fullPath) : 0
-                        ]);
-                        $filesToUpload[$fieldName] = $fullPath;
+                $plan = Plan::find($request->plan);
+                if ($plan) {
+                    $application->desired_plan = $plan->plan_name . ' - ₱' . number_format($plan->price, 2);
+                } else {
+                    $application->desired_plan = $request->plan;
+                }
+                
+                if ($request->promo && $request->promo !== '') {
+                    $application->promo = $request->promo;
+                } else {
+                    $application->promo = 'None';
+                }
+                
+                $application->terms_agreed = true;
+                $application->status = 'pending';
+                
+                $application->proof_of_billing_url = 'processing';
+                $application->government_valid_id_url = 'processing';
+                $application->house_front_picture_url = 'processing';
+                $application->nearest_landmark1_url = 'processing';
+                $application->nearest_landmark2_url = 'processing';
+
+                $application->save();
+
+                Log::info('Application record created', ['application_id' => $application->id]);
+
+                $imagePath = public_path('storage/images');
+                if (!file_exists($imagePath)) {
+                    mkdir($imagePath, 0755, true);
+                    Log::info('Created images directory', ['path' => $imagePath]);
+                }
+
+                $imageFieldMapping = [
+                    'proofOfBilling' => 'proof_of_billing_url',
+                    'governmentIdPrimary' => 'government_valid_id_url',
+                    'governmentIdSecondary' => 'second_government_valid_id_url',
+                    'houseFrontPicture' => 'house_front_picture_url',
+                    'nearestLandmark1Image' => 'nearest_landmark1_url',
+                    'nearestLandmark2Image' => 'nearest_landmark2_url',
+                    'promoProof' => 'promo_url',
+                ];
+
+                foreach ($imageFieldMapping as $requestKey => $dbField) {
+                    if ($request->hasFile($requestKey)) {
+                        try {
+                            $file = $request->file($requestKey);
+                            $originalName = $file->getClientOriginalName();
+                            $fileName = $application->id . '_' . $dbField . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                            $localPath = $imagePath . '/' . $fileName;
+                            
+                            $file->move($imagePath, $fileName);
+                            
+                            Log::info("Saved image to local storage", [
+                                'field' => $dbField,
+                                'file_name' => $fileName,
+                                'path' => $localPath
+                            ]);
+
+                            ImageQueue::create([
+                                'application_id' => $application->id,
+                                'field_name' => $dbField,
+                                'local_path' => $localPath,
+                                'original_filename' => $originalName,
+                                'status' => 'pending',
+                            ]);
+
+                            Log::info("Added to image queue", ['field' => $dbField, 'application_id' => $application->id]);
+
+                        } catch (\Exception $e) {
+                            Log::error("Failed to save image locally: {$requestKey}", [
+                                'error' => $e->getMessage(),
+                                'application_id' => $application->id
+                            ]);
+                            throw $e;
+                        }
                     }
                 }
 
-                Log::info('Resized images ready for upload', [
-                    'count' => count($filesToUpload),
-                    'files' => array_keys($filesToUpload)
+                DB::commit();
+
+                Log::info('Application submitted successfully with queued images', [
+                    'application_id' => $application->id,
+                    'email' => $application->email_address,
+                    'queued_images' => ImageQueue::where('application_id', $application->id)->count()
                 ]);
 
-                if (count($filesToUpload) > 0) {
-                    Log::info('Uploading resized images to Google Drive...');
-                    $googleDriveUrls = $this->googleDriveService->uploadApplicationDocuments($fullName, $filesToUpload);
-                    Log::info('Google Drive upload completed', ['urls' => $googleDriveUrls]);
-                } else {
-                    Log::warning('No files to upload to Google Drive');
-                }
-                
-                Log::info('=== GOOGLE DRIVE UPLOAD END ===');
-                
+                return response()->json([
+                    'message' => 'Application submitted successfully. Images will be processed shortly.',
+                    'application' => $application
+                ], 201);
+
             } catch (\Exception $e) {
-                Log::error('=== GOOGLE DRIVE UPLOAD FAILED ===');
-                Log::error('Error Message: ' . $e->getMessage());
-                Log::error('Error File: ' . $e->getFile() . ':' . $e->getLine());
-                Log::error('Stack trace: ' . $e->getTraceAsString());
-                Log::error('=== END ERROR ===');
+                DB::rollBack();
+                throw $e;
             }
-
-            $application = new Application();
-            
-            $application->timestamp = now();
-            $application->email_address = $request->email;
-            $application->mobile_number = $request->mobile;
-            $application->first_name = $request->firstName;
-            $application->last_name = $request->lastName;
-            $application->middle_initial = $request->middleInitial;
-            $application->secondary_mobile_number = $request->secondaryMobile;
-            $application->region = $request->region;
-            $application->city = $request->city;
-            $application->barangay = $request->barangay;
-            $application->location = $request->location;
-            $application->installation_address = $request->installationAddress;
-            $application->long_lat = $request->coordinates;
-            $application->landmark = $request->landmark;
-            $application->referred_by = $request->referredBy;
-            
-            $plan = Plan::find($request->plan);
-            if ($plan) {
-                $application->desired_plan = $plan->plan_name . ' - ₱' . number_format($plan->price, 2);
-            } else {
-                $application->desired_plan = $request->plan;
-            }
-            
-            if ($request->promo && $request->promo !== '') {
-                $application->promo = $request->promo;
-            } else {
-                $application->promo = 'None';
-            }
-            
-            $application->terms_agreed = true;
-            $application->status = 'pending';
-
-            if (isset($googleDriveUrls['proof_of_billing_url'])) {
-                $application->proof_of_billing_url = $googleDriveUrls['proof_of_billing_url'];
-            }
-
-            if (isset($googleDriveUrls['government_valid_id_url'])) {
-                $application->government_valid_id_url = $googleDriveUrls['government_valid_id_url'];
-            }
-
-            if (isset($googleDriveUrls['second_government_valid_id_url'])) {
-                $application->second_government_valid_id_url = $googleDriveUrls['second_government_valid_id_url'];
-            }
-
-            if (isset($googleDriveUrls['house_front_picture_url'])) {
-                $application->house_front_picture_url = $googleDriveUrls['house_front_picture_url'];
-            }
-
-            if (isset($googleDriveUrls['nearest_landmark1_url'])) {
-                $application->nearest_landmark1_url = $googleDriveUrls['nearest_landmark1_url'];
-            }
-
-            if (isset($googleDriveUrls['nearest_landmark2_url'])) {
-                $application->nearest_landmark2_url = $googleDriveUrls['nearest_landmark2_url'];
-            }
-
-            if (isset($googleDriveUrls['promo_url'])) {
-                $application->promo_url = $googleDriveUrls['promo_url'];
-            }
-
-            $application->save();
-
-            Log::info('Application submitted successfully', [
-                'application_id' => $application->id,
-                'email' => $application->email_address,
-                'google_drive_folder' => $fullName
-            ]);
-
-            return response()->json([
-                'message' => 'Application submitted successfully',
-                'application' => $application
-            ], 201);
 
         } catch (\Exception $e) {
             Log::error('Application submission failed', [
@@ -199,100 +185,6 @@ class ApplicationController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-    }
-
-    private function handleLocalDocumentUploads(Request $request)
-    {
-        Log::info('=== STEP 1: RESIZE AND SAVE IMAGES LOCALLY ===');
-        
-        $documentPaths = [];
-
-        $documentMappings = [
-            'proofOfBilling' => 'proofOfBilling',
-            'governmentIdPrimary' => 'governmentIdPrimary',
-            'governmentIdSecondary' => 'governmentIdSecondary',
-            'houseFrontPicture' => 'houseFrontPicture',
-            'nearestLandmark1Image' => 'nearestLandmark1Image',
-            'nearestLandmark2Image' => 'nearestLandmark2Image',
-            'promoProof' => 'promoProof',
-        ];
-
-        $documentsPath = public_path('assets/documents');
-        if (!file_exists($documentsPath)) {
-            mkdir($documentsPath, 0755, true);
-            Log::info('Created documents directory', ['path' => $documentsPath]);
-        }
-
-        foreach ($documentMappings as $requestKey => $fieldKey) {
-            if ($request->hasFile($requestKey)) {
-                try {
-                    $file = $request->file($requestKey);
-                    $originalName = $file->getClientOriginalName();
-                    $fileName = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $finalPath = $documentsPath . '/' . $fileName;
-                    $fileType = $file->getClientMimeType();
-                    $originalSize = $file->getSize();
-                    
-                    Log::info("Processing {$requestKey}", [
-                        'original_name' => $originalName,
-                        'file_name' => $fileName,
-                        'mime_type' => $fileType,
-                        'original_size' => $originalSize,
-                        'is_image' => ImageResizeService::isImageFile($fileType)
-                    ]);
-                    
-                    if (ImageResizeService::isImageFile($fileType)) {
-                        Log::info("Image detected: {$requestKey} - Attempting to resize based on active settings");
-                        
-                        $tempPath = $file->getPathname();
-                        $resized = ImageResizeService::resizeImage($tempPath, $finalPath);
-                        
-                        if ($resized && file_exists($finalPath)) {
-                            $resizedSize = filesize($finalPath);
-                            $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                            
-                            Log::info("SUCCESS: Image resized for {$requestKey}", [
-                                'file_name' => $fileName,
-                                'original_size' => $originalSize . ' bytes',
-                                'resized_size' => $resizedSize . ' bytes',
-                                'reduction_percentage' => round((($originalSize - $resizedSize) / $originalSize) * 100, 2) . '%',
-                                'saved_path' => $documentPaths[$fieldKey]
-                            ]);
-                        } else {
-                            Log::warning("Resize failed for {$requestKey}, saving original image", [
-                                'file_name' => $fileName
-                            ]);
-                            
-                            if ($file->move($documentsPath, $fileName)) {
-                                $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                                Log::info("Original image saved: {$fileName} for {$requestKey}");
-                            }
-                        }
-                    } else {
-                        Log::info("Non-image file detected: {$requestKey} (PDF) - Saving without resize");
-                        
-                        if ($file->move($documentsPath, $fileName)) {
-                            $documentPaths[$fieldKey] = 'assets/documents/' . $fileName;
-                            Log::info("File saved: {$fileName} for {$requestKey}");
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::error("Failed to process {$requestKey}: " . $e->getMessage(), [
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    $documentPaths[$fieldKey] = null;
-                }
-            } else {
-                Log::info("No file uploaded for {$requestKey}");
-            }
-        }
-        
-        Log::info('=== STEP 1 COMPLETED: ALL IMAGES RESIZED ===', [
-            'total_files_processed' => count($documentPaths),
-            'files' => array_keys($documentPaths)
-        ]);
-
-        return $documentPaths;
     }
 
     public function index(Request $request)

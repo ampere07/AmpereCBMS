@@ -15,7 +15,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('images:process --limit=10')
+            ->everyThreeMinutes()
+            ->withoutOverlapping()
+            ->runInBackground();
     }
 
     /**

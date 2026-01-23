@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FormUIController;
 use App\Http\Controllers\PromoController;
+use App\Services\ImageProcessingService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -49,6 +50,22 @@ Route::put('/plans/{id}', [PlanController::class, 'update']);
 Route::delete('/plans/{id}', [PlanController::class, 'destroy']);
 
 Route::get('/promo_list', [PromoController::class, 'index']);
+
+// Image Queue Monitoring Routes
+Route::get('/image-queue/stats', function () {
+    try {
+        $service = app(ImageProcessingService::class);
+        return response()->json([
+            'success' => true,
+            'stats' => $service->getQueueStats()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
 
 // Temporary cache clear route - DELETE AFTER USE
 Route::get('/clear-cache', function () {
