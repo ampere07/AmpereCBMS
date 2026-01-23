@@ -36,6 +36,7 @@ class ApplicationController extends Controller
                 'barangay' => 'required|string|max:255',
                 'location' => 'nullable|string|max:255',
                 'installationAddress' => 'required|string',
+                'coordinates' => 'nullable|string|max:255',
                 'landmark' => 'required|string|max:255',
                 'referredBy' => 'nullable|string|max:255',
                 'plan' => 'required|string|max:255',
@@ -126,12 +127,13 @@ class ApplicationController extends Controller
             $application->barangay = $request->barangay;
             $application->location = $request->location;
             $application->installation_address = $request->installationAddress;
+            $application->long_lat = $request->coordinates;
             $application->landmark = $request->landmark;
             $application->referred_by = $request->referredBy;
             
             $plan = Plan::find($request->plan);
             if ($plan) {
-                $application->desired_plan = $plan->plan_name;
+                $application->desired_plan = $plan->plan_name . ' - ₱' . number_format($plan->price, 2);
             } else {
                 $application->desired_plan = $request->plan;
             }

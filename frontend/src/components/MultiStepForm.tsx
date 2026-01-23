@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import LoadingModal from './Loading/LoadingModal';
+import LocationMap from './Map/LocationMap';
+import CameraFileInput from './Form/CameraFileInput';
+import TermsModal from './TermsModal';
 
 interface Region {
   id: number;
@@ -51,6 +54,7 @@ interface FormState {
   location: string;
   completeLocation: string;
   installationAddress: string;
+  coordinates: string;
   landmark: string;
   nearestLandmark1Image: File | null;
   nearestLandmark2Image: File | null;
@@ -80,13 +84,21 @@ interface MultiStepFormProps {
 
 const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'multistep', isEditMode: externalIsEditMode, onEditModeChange, requireFields = true }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
+  const googleMapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
   const [currentStep, setCurrentStep] = useState(1);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapCenter, setMapCenter] = useState({ lat: 14.5995, lng: 120.9842 });
+  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaQuestion, setCaptchaQuestion] = useState({ num1: 0, num2: 0, answer: 0 });
+  const [captchaError, setCaptchaError] = useState(false);
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
@@ -159,6 +171,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     };
     
     fetchUISettings();
+    generateCaptcha();
   }, []);
 
   const handleEdit = () => {
@@ -310,6 +323,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     location: '',
     completeLocation: '',
     installationAddress: '',
+    coordinates: '',
     landmark: '',
     nearestLandmark1Image: null,
     nearestLandmark2Image: null,
@@ -472,19 +486,38 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     }
   }, [formData.region, formData.city, formData.barangay, formData.location, regions, cities, barangays, villages]);
 
+  const generateCaptcha = () => {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    setCaptchaQuestion({ num1, num2, answer: num1 + num2 });
+    setCaptchaAnswer('');
+    setCaptchaError(false);
+  };
+
+  const handleCaptchaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCaptchaAnswer(e.target.value);
+    setCaptchaError(false);
+  };
+
+  const formatPlanName = (planName: string): string => {
+    return planName
+      .replace(/\s*-?\s*WFH\s*/gi, '')
+      .replace(/\s*-?\s*Work from Home\s*/gi, '')
+      .replace(/\s*-?\s*VIP\s*/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, files } = e.target;
-    if (files && files.length > 0) {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: files[0]
-      }));
-    }
+  const handleFileChange = (fieldName: string, file: File | null) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      [fieldName]: file
+    }));
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -558,6 +591,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (parseInt(captchaAnswer) !== captchaQuestion.answer) {
+      setCaptchaError(true);
+      return;
+    }
+    
     if (!formData.privacyAgreement) {
       alert('Please agree to the privacy policy before submitting.');
       return;
@@ -582,6 +620,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     submissionData.append('barangay', selectedBarangay);
     submissionData.append('location', selectedLocation);
     submissionData.append('installationAddress', formData.installationAddress);
+    submissionData.append('coordinates', formData.coordinates || '');
     submissionData.append('landmark', formData.landmark);
     submissionData.append('referredBy', formData.referredBy);
     
@@ -618,6 +657,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       }
       
       setShowSuccessModal(true);
+      generateCaptcha();
       
     } catch (error) {
       let errorMessage = 'Failed to submit application. Please try again.';
@@ -629,6 +669,46 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenMap = () => {
+    setShowMapModal(true);
+    if (selectedPosition) {
+      setMapCenter(selectedPosition);
+    }
+  };
+
+  const handleGetMyLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setSelectedPosition(newPos);
+          setMapCenter(newPos);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Unable to get your location. Please check your browser permissions.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  const handleMapLocationSelect = (lat: number, lng: number) => {
+    setSelectedPosition({ lat, lng });
+  };
+
+  const handleConfirmLocation = () => {
+    if (selectedPosition) {
+      const coordString = `${selectedPosition.lat.toFixed(6)}, ${selectedPosition.lng.toFixed(6)}`;
+      setFormData(prev => ({ ...prev, coordinates: coordString }));
+      setShowMapModal(false);
     }
   };
 
@@ -646,6 +726,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       location: '',
       completeLocation: '',
       installationAddress: '',
+      coordinates: '',
       landmark: '',
       nearestLandmark1Image: null,
       nearestLandmark2Image: null,
@@ -666,6 +747,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     });
     
     setCurrentStep(1);
+    generateCaptcha();
   };
 
   const renderStepIndicator = () => (
@@ -983,9 +1065,19 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
         
         <div className="col-span-1 md:col-span-2 mb-4">
-          <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: getLabelColor() }}>
-            Installation Address {requireFields && <span className="text-red-500">*</span>}
-          </label>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block font-medium" htmlFor="installationAddress" style={{ color: getLabelColor() }}>
+              Installation Address {requireFields && <span className="text-red-500">*</span>}
+            </label>
+            <button
+              type="button"
+              onClick={handleOpenMap}
+              className="px-3 py-1 text-sm font-medium text-white rounded hover:opacity-90 transition-all"
+              style={{ backgroundColor: buttonColor }}
+            >
+              Pin Location
+            </button>
+          </div>
           <textarea
             id="installationAddress"
             name="installationAddress"
@@ -1002,6 +1094,20 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               color: getTextColor()
             }}
           ></textarea>
+          <div className="mt-2">
+            <input
+              type="text"
+              value={formData.coordinates}
+              readOnly
+              placeholder="Coordinates will appear here after pinning location"
+              className="w-full border rounded px-3 py-2"
+              style={{ 
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#0a0a0a' : '#f9fafb',
+                color: getTextColor()
+              }}
+            />
+          </div>
         </div>
         
         <div className="mb-4">
@@ -1026,69 +1132,31 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           />
         </div>
         
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: getLabelColor() }}>
-            Nearest Landmark #1 Image {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <div className="flex items-center">
-            <input
-              type="file"
-              id="nearestLandmark1Image"
-              name="nearestLandmark1Image"
-              onChange={handleFileChange}
-              required={requireFields}
-              accept=".jpg,.jpeg,.png"
-              title="Please upload an image of nearest landmark #1"
-            className="hidden"
-            />
-            <label 
-              htmlFor="nearestLandmark1Image" 
-              className="cursor-pointer border rounded px-3 py-2 text-sm"
-              style={{ 
-                borderColor: getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                color: getTextColor()
-              }}
-            >
-              Choose Image
-            </label>
-            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-              {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
-            </span>
-          </div>
-        </div>
+        <CameraFileInput
+          label="Nearest Landmark #1 Image"
+          name="nearestLandmark1Image"
+          required={requireFields}
+          accept=".jpg,.jpeg,.png"
+          value={formData.nearestLandmark1Image}
+          onChange={(file) => handleFileChange('nearestLandmark1Image', file)}
+          labelColor={getLabelColor()}
+          borderColor={getBorderColor()}
+          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+          textColor={getTextColor()}
+        />
         
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: getLabelColor() }}>
-            Nearest Landmark #2 Image {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <div className="flex items-center">
-            <input
-              type="file"
-              id="nearestLandmark2Image"
-              name="nearestLandmark2Image"
-              onChange={handleFileChange}
-              required={requireFields}
-              accept=".jpg,.jpeg,.png"
-              title="Please upload an image of nearest landmark #2"
-              className="hidden"
-            />
-            <label 
-              htmlFor="nearestLandmark2Image" 
-              className="cursor-pointer border rounded px-3 py-2 text-sm"
-              style={{ 
-                borderColor: getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                color: getTextColor()
-              }}
-            >
-              Choose Image
-            </label>
-            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-              {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
-            </span>
-          </div>
-        </div>
+        <CameraFileInput
+          label="Nearest Landmark #2 Image"
+          name="nearestLandmark2Image"
+          required={requireFields}
+          accept=".jpg,.jpeg,.png"
+          value={formData.nearestLandmark2Image}
+          onChange={(file) => handleFileChange('nearestLandmark2Image', file)}
+          labelColor={getLabelColor()}
+          borderColor={getBorderColor()}
+          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+          textColor={getTextColor()}
+        />
         
         <div className="mb-4">
           <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
@@ -1140,7 +1208,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             <option value="">Select plan</option>
             {plans.map(plan => (
               <option key={plan.id} value={plan.id}>
-                {plan.plan_name} - ₱{plan.price.toLocaleString()}
+                {formatPlanName(plan.plan_name)} - ₱{plan.price.toLocaleString()}
               </option>
             ))}
           </select>
@@ -1181,170 +1249,113 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: getLabelColor() }}>
-            Proof of Billing {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <div className="flex items-center">
-            <input
-              type="file"
-              id="proofOfBilling"
-              name="proofOfBilling"
-              onChange={handleFileChange}
-              required={requireFields}
-              accept=".jpg,.jpeg,.png,.pdf"
-              title="Please upload your proof of billing (utility bill)"
-              className="hidden"
-            />
-            <label 
-              htmlFor="proofOfBilling" 
-              className="cursor-pointer border rounded px-3 py-2 text-sm"
-              style={{ 
-                borderColor: getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                color: getTextColor()
-              }}
-            >
-              Choose File
-            </label>
-            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-              {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
-            </span>
-          </div>
-        </div>
+        <CameraFileInput
+          label="Proof of Billing"
+          name="proofOfBilling"
+          required={requireFields}
+          accept=".jpg,.jpeg,.png,.pdf"
+          value={formData.proofOfBilling}
+          onChange={(file) => handleFileChange('proofOfBilling', file)}
+          labelColor={getLabelColor()}
+          borderColor={getBorderColor()}
+          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+          textColor={getTextColor()}
+        />
         
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: getLabelColor() }}>
-            Government Valid ID (Primary) {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <div className="flex items-center">
-            <input
-              type="file"
-              id="governmentIdPrimary"
-              name="governmentIdPrimary"
-              onChange={handleFileChange}
-              required={requireFields}
-              accept=".jpg,.jpeg,.png,.pdf"
-              title="Please upload your primary government-issued ID"
-              className="hidden"
-            />
-            <label 
-              htmlFor="governmentIdPrimary" 
-              className="cursor-pointer border rounded px-3 py-2 text-sm"
-              style={{ 
-                borderColor: getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                color: getTextColor()
-              }}
-            >
-              Choose File
-            </label>
-            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-              {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
-            </span>
-          </div>
-        </div>
+        <CameraFileInput
+          label="Government Valid ID (Primary)"
+          name="governmentIdPrimary"
+          required={requireFields}
+          accept=".jpg,.jpeg,.png,.pdf"
+          value={formData.governmentIdPrimary}
+          onChange={(file) => handleFileChange('governmentIdPrimary', file)}
+          labelColor={getLabelColor()}
+          borderColor={getBorderColor()}
+          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+          textColor={getTextColor()}
+        />
         
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: getLabelColor() }}>
-            Government Valid ID (Secondary)
-          </label>
-          <div className="flex items-center">
-            <input
-              type="file"
-              id="governmentIdSecondary"
-              name="governmentIdSecondary"
-              onChange={handleFileChange}
-              accept=".jpg,.jpeg,.png,.pdf"
-              title="Upload a secondary government-issued ID (optional)"
-              className="hidden"
-            />
-            <label 
-              htmlFor="governmentIdSecondary" 
-              className="cursor-pointer border rounded px-3 py-2 text-sm"
-              style={{ 
-                borderColor: getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                color: getTextColor()
-              }}
-            >
-              Choose File
-            </label>
-            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-              {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
-            </span>
-          </div>
-        </div>
+        <CameraFileInput
+          label="Government Valid ID (Secondary)"
+          name="governmentIdSecondary"
+          required={false}
+          accept=".jpg,.jpeg,.png,.pdf"
+          value={formData.governmentIdSecondary}
+          onChange={(file) => handleFileChange('governmentIdSecondary', file)}
+          labelColor={getLabelColor()}
+          borderColor={getBorderColor()}
+          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+          textColor={getTextColor()}
+        />
         
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: getLabelColor() }}>
-            House Front Picture {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <div className="flex items-center">
-            <input
-              type="file"
-              id="houseFrontPicture"
-              name="houseFrontPicture"
-              onChange={handleFileChange}
-              required={requireFields}
-              accept=".jpg,.jpeg,.png"
-              title="Please upload a photo of your house front"
-              className="hidden"
-            />
-            <label 
-              htmlFor="houseFrontPicture" 
-              className="cursor-pointer border rounded px-3 py-2 text-sm"
-              style={{ 
-                borderColor: getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                color: getTextColor()
-              }}
-            >
-              Choose File
-            </label>
-            <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-              {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
-            </span>
-          </div>
-        </div>
+        <CameraFileInput
+          label="House Front Picture"
+          name="houseFrontPicture"
+          required={requireFields}
+          accept=".jpg,.jpeg,.png"
+          value={formData.houseFrontPicture}
+          onChange={(file) => handleFileChange('houseFrontPicture', file)}
+          labelColor={getLabelColor()}
+          borderColor={getBorderColor()}
+          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+          textColor={getTextColor()}
+        />
         
         {formData.promo && formData.promo !== '' && (
-          <div className="mb-4">
-            <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: getLabelColor() }}>
-              Promo Proof Document {requireFields && <span className="text-red-500">*</span>}
-            </label>
-            <div className="flex items-center">
-              <input
-                type="file"
-                id="promoProof"
-                name="promoProof"
-                onChange={handleFileChange}
-                required={requireFields}
-                accept=".jpg,.jpeg,.png,.pdf"
-                title="Please upload proof of eligibility for the selected promo"
-                className="hidden"
-              />
-              <label 
-                htmlFor="promoProof" 
-                className="cursor-pointer border rounded px-3 py-2 text-sm"
-                style={{ 
-                  borderColor: getBorderColor(),
-                  backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb',
-                  color: getTextColor()
-                }}
-              >
-                Choose File
-              </label>
-              <span className="ml-3 text-sm" style={{ color: getLabelColor() }}>
-                {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
-              </span>
-            </div>
+          <div>
+            <CameraFileInput
+              label="Promo Proof Document"
+              name="promoProof"
+              required={requireFields}
+              accept=".jpg,.jpeg,.png,.pdf"
+              value={formData.promoProof}
+              onChange={(file) => handleFileChange('promoProof', file)}
+              labelColor={getLabelColor()}
+              borderColor={getBorderColor()}
+              backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+              textColor={getTextColor()}
+            />
             <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Required when a promo is selected</small>
           </div>
         )}
       </div>
       
       <div className="mt-6">
+        <div className="mb-4">
+          <label className="block font-medium mb-2" style={{ color: getLabelColor() }}>
+            Please solve this math problem: {captchaQuestion.num1} + {captchaQuestion.num2} = ?
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={captchaAnswer}
+              onChange={handleCaptchaChange}
+              required
+              placeholder="Enter your answer"
+              className="w-32 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+              style={{ 
+                borderColor: captchaError ? '#EF4444' : getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                color: getTextColor()
+              }}
+            />
+            <button
+              type="button"
+              onClick={generateCaptcha}
+              className="px-3 py-2 text-sm border-2 rounded-lg hover:bg-gray-50 transition-all"
+              style={{ borderColor: getBorderColor(), color: getLabelColor() }}
+              title="Generate new question"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+          {captchaError && (
+            <p className="text-red-500 text-sm mt-2">Incorrect answer. Please try again.</p>
+          )}
+        </div>
+        
         <div className="flex items-center">
           <input
             type="checkbox"
@@ -1356,7 +1367,16 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             className="mr-2 h-4 w-4"
           />
           <label htmlFor="privacyAgreement" className="text-sm" style={{ color: getLabelColor() }}>
-            I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies. {requireFields && <span className="text-red-500">*</span>}
+            I accept the{' '}
+            <button
+              type="button"
+              onClick={() => setShowTermsModal(true)}
+              className="underline hover:no-underline"
+              style={{ color: buttonColor }}
+            >
+              terms and conditions
+            </button>
+            {requireFields && <span className="text-red-500"> *</span>}
           </label>
         </div>
       </div>
@@ -1777,6 +1797,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
       )}
 
+      {showTermsModal && <TermsModal onClose={() => setShowTermsModal(false)} buttonColor={buttonColor} />}
+
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -1798,6 +1820,80 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMapModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 relative">
+            <button
+              onClick={() => setShowMapModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">Pin Your Location</h3>
+            <p className="text-center text-gray-600 mb-4">Click on the map or drag the marker to set your location</p>
+            <div className="mb-4 flex justify-center">
+              <button
+                type="button"
+                onClick={handleGetMyLocation}
+                className="px-4 py-2 text-white rounded hover:opacity-90 transition-all flex items-center gap-2"
+                style={{ backgroundColor: buttonColor }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Get My Location
+              </button>
+            </div>
+            <div className="h-96 w-full mb-4">
+              <LocationMap
+                center={mapCenter}
+                onLocationSelect={handleMapLocationSelect}
+                buttonColor={buttonColor}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2 text-gray-700">Latitude</label>
+              <input
+                type="number"
+                step="0.000001"
+                value={selectedPosition?.lat || mapCenter.lat}
+                onChange={(e) => setSelectedPosition({ lat: parseFloat(e.target.value), lng: selectedPosition?.lng || mapCenter.lng })}
+                className="w-full border rounded px-3 py-2 mb-2"
+                style={{ borderColor: '#E5E7EB' }}
+              />
+              <label className="block text-sm font-medium mb-2 text-gray-700">Longitude</label>
+              <input
+                type="number"
+                step="0.000001"
+                value={selectedPosition?.lng || mapCenter.lng}
+                onChange={(e) => setSelectedPosition({ lat: selectedPosition?.lat || mapCenter.lat, lng: parseFloat(e.target.value) })}
+                className="w-full border rounded px-3 py-2"
+                style={{ borderColor: '#E5E7EB' }}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowMapModal(false)}
+                className="px-6 py-2 border-2 rounded hover:bg-gray-50"
+                style={{ borderColor: '#E5E7EB', color: '#374151' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmLocation}
+                className="px-6 py-2 text-white rounded hover:opacity-90"
+                style={{ backgroundColor: buttonColor }}
+              >
+                Confirm Location
               </button>
             </div>
           </div>

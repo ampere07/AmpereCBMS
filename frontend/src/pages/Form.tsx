@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import API_CONFIG from '../config/api';
 import LoadingModal from '../components/Loading/LoadingModal';
+import LocationMap from '../components/Map/LocationMap';
+import CameraFileInput from '../components/Form/CameraFileInput';
 
 interface Region {
   id: number;
@@ -46,6 +48,7 @@ interface FormState {
   location: string;
   completeLocation: string;
   installationAddress: string;
+  coordinates: string;
   landmark: string;
   nearestLandmark1Image: File | null;
   nearestLandmark2Image: File | null;
@@ -81,10 +84,19 @@ interface FormProps {
 
 const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original', isEditMode: externalIsEditMode, onEditModeChange, requireFields = true }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
+  const googleMapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [mapCenter, setMapCenter] = useState({ lat: 14.5995, lng: 120.9842 });
+  const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showSubmitFailedModal, setShowSubmitFailedModal] = useState(false);
   const [submitErrorMessage, setSubmitErrorMessage] = useState('');
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+  const [captchaQuestion, setCaptchaQuestion] = useState({ num1: 0, num2: 0, answer: 0 });
+  const [captchaError, setCaptchaError] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<string[]>([]);
   const isEditMode = externalIsEditMode !== undefined ? externalIsEditMode : false;
   const [backgroundColor, setBackgroundColor] = useState('');
   const [formBgColor, setFormBgColor] = useState('');
@@ -160,6 +172,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     };
     
     fetchUISettings();
+    generateCaptcha();
   }, []);
   
   const [regions, setRegions] = useState<Region[]>([]);
@@ -325,6 +338,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     location: '',
     completeLocation: '',
     installationAddress: '',
+    coordinates: '',
     landmark: '',
     nearestLandmark1Image: null,
     nearestLandmark2Image: null,
@@ -517,20 +531,46 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     }
   }, [formData.region, formData.city, formData.barangay, formData.location, regions, cities, barangays, villages]);
 
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => 
+      prev.includes(section) 
+        ? prev.filter(s => s !== section)
+        : [...prev, section]
+    );
+  };
+
+  const generateCaptcha = () => {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    setCaptchaQuestion({ num1, num2, answer: num1 + num2 });
+    setCaptchaAnswer('');
+    setCaptchaError(false);
+  };
+
+  const handleCaptchaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCaptchaAnswer(e.target.value);
+    setCaptchaError(false);
+  };
+
+  const formatPlanName = (planName: string): string => {
+    return planName
+      .replace(/\s*-?\s*WFH\s*/gi, '')
+      .replace(/\s*-?\s*Work from Home\s*/gi, '')
+      .replace(/\s*-?\s*VIP\s*/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, files } = e.target;
-    
-    if (files && files.length > 0) {
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: files[0]
-      }));
-    }
+  const handleFileChange = (fieldName: string, file: File | null) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      [fieldName]: file
+    }));
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -539,6 +579,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (parseInt(captchaAnswer) !== captchaQuestion.answer) {
+      setCaptchaError(true);
+      return;
+    }
     
     if (!formData.privacyAgreement) {
       setValidationMessage('Please agree to the privacy policy before submitting.');
@@ -599,6 +644,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     submissionData.append('barangay', selectedBarangay);
     submissionData.append('location', selectedLocation);
     submissionData.append('installationAddress', formData.installationAddress);
+    submissionData.append('coordinates', formData.coordinates || '');
     submissionData.append('landmark', formData.landmark);
     submissionData.append('referredBy', formData.referredBy);
     
@@ -658,6 +704,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       
       setIsSubmitting(false);
       setShowSuccessModal(true);
+      generateCaptcha();
       
     } catch (error) {
       let errorMessage = 'Failed to submit application. Please try again.';
@@ -669,6 +716,46 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       setSubmitErrorMessage(errorMessage);
       setIsSubmitting(false);
       setShowSubmitFailedModal(true);
+    }
+  };
+
+  const handleOpenMap = () => {
+    setShowMapModal(true);
+    if (selectedPosition) {
+      setMapCenter(selectedPosition);
+    }
+  };
+
+  const handleGetMyLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setSelectedPosition(newPos);
+          setMapCenter(newPos);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          alert('Unable to get your location. Please check your browser permissions.');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser.');
+    }
+  };
+
+  const handleMapLocationSelect = (lat: number, lng: number) => {
+    setSelectedPosition({ lat, lng });
+  };
+
+  const handleConfirmLocation = () => {
+    if (selectedPosition) {
+      const coordString = `${selectedPosition.lat.toFixed(6)}, ${selectedPosition.lng.toFixed(6)}`;
+      setFormData(prev => ({ ...prev, coordinates: coordString }));
+      setShowMapModal(false);
     }
   };
 
@@ -686,6 +773,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       location: '',
       completeLocation: '',
       installationAddress: '',
+      coordinates: '',
       landmark: '',
       nearestLandmark1Image: null,
       nearestLandmark2Image: null,
@@ -704,6 +792,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     fileInputs.forEach((input) => {
       (input as HTMLInputElement).value = '';
     });
+    
+    generateCaptcha();
   };
 
   return (
@@ -1266,9 +1356,19 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
                 
                 <div className="col-span-1 md:col-span-2 mb-4">
-                  <label className="block font-medium mb-2" htmlFor="installationAddress" style={{ color: '#374151' }}>
-                    Installation Address {requireFields && <span className="text-red-500">*</span>}
-                  </label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block font-medium" htmlFor="installationAddress" style={{ color: '#374151' }}>
+                      Installation Address {requireFields && <span className="text-red-500">*</span>}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleOpenMap}
+                      className="px-3 py-1 text-sm font-medium text-white rounded hover:opacity-90 transition-all"
+                      style={{ backgroundColor: buttonColor }}
+                    >
+                      Pin Location
+                    </button>
+                  </div>
                   <textarea
                     id="installationAddress"
                     name="installationAddress"
@@ -1284,6 +1384,20 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       color: '#1F2937'
                     }}
                   ></textarea>
+                  <div className="mt-2">
+                    <input
+                      type="text"
+                      value={formData.coordinates}
+                      readOnly
+                      placeholder="Coordinates will appear here after pinning location"
+                      className="w-full border rounded px-3 py-2"
+                      style={{ 
+                        borderColor: '#E5E7EB',
+                        backgroundColor: '#F3F4F6',
+                        color: '#6B7280'
+                      }}
+                    />
+                  </div>
                 </div>
                 
                 <div className="mb-4">
@@ -1307,65 +1421,31 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                 </div>
                 
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="nearestLandmark1Image" style={{ color: '#374151' }}>
-                    Nearest Landmark #1 Image {requireFields && <span className="text-red-500">*</span>}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      id="nearestLandmark1Image"
-                      name="nearestLandmark1Image"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png"
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="nearestLandmark1Image" 
-                      className="cursor-pointer border rounded px-3 py-2 text-sm"
-                      style={{ 
-                        borderColor: '#E5E7EB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#1F2937'
-                      }}
-                    >
-                      Choose Image
-                    </label>
-                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                      {formData.nearestLandmark1Image ? formData.nearestLandmark1Image.name : 'No image chosen'}
-                    </span>
-                  </div>
-                </div>
+                <CameraFileInput
+                  label="Nearest Landmark #1 Image"
+                  name="nearestLandmark1Image"
+                  required={requireFields}
+                  accept=".jpg,.jpeg,.png"
+                  value={formData.nearestLandmark1Image}
+                  onChange={(file) => handleFileChange('nearestLandmark1Image', file)}
+                  labelColor="#374151"
+                  borderColor="#E5E7EB"
+                  backgroundColor="#FFFFFF"
+                  textColor="#1F2937"
+                />
                 
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="nearestLandmark2Image" style={{ color: '#374151' }}>
-                    Nearest Landmark #2 Image {requireFields && <span className="text-red-500">*</span>}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      id="nearestLandmark2Image"
-                      name="nearestLandmark2Image"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png"
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="nearestLandmark2Image" 
-                      className="cursor-pointer border rounded px-3 py-2 text-sm"
-                      style={{ 
-                        borderColor: '#E5E7EB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#1F2937'
-                      }}
-                    >
-                      Choose Image
-                    </label>
-                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                      {formData.nearestLandmark2Image ? formData.nearestLandmark2Image.name : 'No image chosen'}
-                    </span>
-                  </div>
-                </div>
+                <CameraFileInput
+                  label="Nearest Landmark #2 Image"
+                  name="nearestLandmark2Image"
+                  required={requireFields}
+                  accept=".jpg,.jpeg,.png"
+                  value={formData.nearestLandmark2Image}
+                  onChange={(file) => handleFileChange('nearestLandmark2Image', file)}
+                  labelColor="#374151"
+                  borderColor="#E5E7EB"
+                  backgroundColor="#FFFFFF"
+                  textColor="#1F2937"
+                />
                 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>
@@ -1413,7 +1493,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     <option value="">Select plan</option>
                     {plans && plans.length > 0 && plans.map(plan => (
                       <option key={plan.id} value={plan.id}>
-                        {plan.plan_name} - ₱{plan.price.toLocaleString()}
+                        {formatPlanName(plan.plan_name)} - ₱{plan.price.toLocaleString()}
                       </option>
                     ))}
                   </select>
@@ -1459,155 +1539,72 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="proofOfBilling" style={{ color: '#374151' }}>
-                    Proof of Billing {requireFields && <span className="text-red-500">*</span>}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      id="proofOfBilling"
-                      name="proofOfBilling"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="proofOfBilling" 
-                      className="cursor-pointer border rounded px-3 py-2 text-sm"
-                      style={{ 
-                        borderColor: '#E5E7EB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#1F2937'
-                      }}
-                    >
-                      Choose File
-                    </label>
-                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                      {formData.proofOfBilling ? formData.proofOfBilling.name : 'No file chosen'}
-                    </span>
-                  </div>
-                </div>
+                <CameraFileInput
+                  label="Proof of Billing"
+                  name="proofOfBilling"
+                  required={requireFields}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  value={formData.proofOfBilling}
+                  onChange={(file) => handleFileChange('proofOfBilling', file)}
+                  labelColor="#374151"
+                  borderColor="#E5E7EB"
+                  backgroundColor="#FFFFFF"
+                  textColor="#1F2937"
+                />
                 
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="governmentIdPrimary" style={{ color: '#374151' }}>
-                    Government Valid ID (Primary) {requireFields && <span className="text-red-500">*</span>}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      id="governmentIdPrimary"
-                      name="governmentIdPrimary"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="governmentIdPrimary" 
-                      className="cursor-pointer border rounded px-3 py-2 text-sm"
-                      style={{ 
-                        borderColor: '#E5E7EB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#1F2937'
-                      }}
-                    >
-                      Choose File
-                    </label>
-                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                      {formData.governmentIdPrimary ? formData.governmentIdPrimary.name : 'No file chosen'}
-                    </span>
-                  </div>
-                </div>
+                <CameraFileInput
+                  label="Government Valid ID (Primary)"
+                  name="governmentIdPrimary"
+                  required={requireFields}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  value={formData.governmentIdPrimary}
+                  onChange={(file) => handleFileChange('governmentIdPrimary', file)}
+                  labelColor="#374151"
+                  borderColor="#E5E7EB"
+                  backgroundColor="#FFFFFF"
+                  textColor="#1F2937"
+                />
                 
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="governmentIdSecondary" style={{ color: '#374151' }}>
-                    Government Valid ID (Secondary)
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      id="governmentIdSecondary"
-                      name="governmentIdSecondary"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png,.pdf"
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="governmentIdSecondary" 
-                      className="cursor-pointer border rounded px-3 py-2 text-sm"
-                      style={{ 
-                        borderColor: '#E5E7EB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#1F2937'
-                      }}
-                    >
-                      Choose File
-                    </label>
-                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                      {formData.governmentIdSecondary ? formData.governmentIdSecondary.name : 'No file chosen'}
-                    </span>
-                  </div>
-                </div>
+                <CameraFileInput
+                  label="Government Valid ID (Secondary)"
+                  name="governmentIdSecondary"
+                  required={false}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  value={formData.governmentIdSecondary}
+                  onChange={(file) => handleFileChange('governmentIdSecondary', file)}
+                  labelColor="#374151"
+                  borderColor="#E5E7EB"
+                  backgroundColor="#FFFFFF"
+                  textColor="#1F2937"
+                />
                 
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="houseFrontPicture" style={{ color: '#374151' }}>
-                    House Front Picture {requireFields && <span className="text-red-500">*</span>}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="file"
-                      id="houseFrontPicture"
-                      name="houseFrontPicture"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png"
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="houseFrontPicture" 
-                      className="cursor-pointer border rounded px-3 py-2 text-sm"
-                      style={{ 
-                        borderColor: '#E5E7EB',
-                        backgroundColor: '#FFFFFF',
-                        color: '#1F2937'
-                      }}
-                    >
-                      Choose File
-                    </label>
-                    <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                      {formData.houseFrontPicture ? formData.houseFrontPicture.name : 'No file chosen'}
-                    </span>
-                  </div>
-                </div>
+                <CameraFileInput
+                  label="House Front Picture"
+                  name="houseFrontPicture"
+                  required={requireFields}
+                  accept=".jpg,.jpeg,.png"
+                  value={formData.houseFrontPicture}
+                  onChange={(file) => handleFileChange('houseFrontPicture', file)}
+                  labelColor="#374151"
+                  borderColor="#E5E7EB"
+                  backgroundColor="#FFFFFF"
+                  textColor="#1F2937"
+                />
                 
                 {formData.promo && formData.promo !== '' && (
-                  <div className="mb-4">
-                    <label className="block font-medium mb-2" htmlFor="promoProof" style={{ color: '#374151' }}>
-                      Promo Proof Document {requireFields && <span className="text-red-500">*</span>}
-                    </label>
-                    <div className="flex items-center">
-                      <input
-                        type="file"
-                        id="promoProof"
-                        name="promoProof"
-                        onChange={handleFileChange}
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        className="hidden"
-                      />
-                      <label 
-                        htmlFor="promoProof" 
-                        className="cursor-pointer border rounded px-3 py-2 text-sm"
-                        style={{ 
-                          borderColor: '#E5E7EB',
-                          backgroundColor: '#FFFFFF',
-                          color: '#1F2937'
-                        }}
-                      >
-                        Choose File
-                      </label>
-                      <span className="ml-3 text-sm" style={{ color: '#6B7280' }}>
-                        {formData.promoProof ? formData.promoProof.name : 'No file chosen'}
-                      </span>
-                    </div>
+                  <div>
+                    <CameraFileInput
+                      label="Promo Proof Document"
+                      name="promoProof"
+                      required={requireFields}
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      value={formData.promoProof}
+                      onChange={(file) => handleFileChange('promoProof', file)}
+                      labelColor="#374151"
+                      borderColor="#E5E7EB"
+                      backgroundColor="#FFFFFF"
+                      textColor="#1F2937"
+                    />
                     <small className="text-sm" style={{ color: '#6B7280' }}>Required when a promo is selected</small>
                   </div>
                 )}
@@ -1615,6 +1612,41 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </section>
             
             <section className="mb-8">
+              <div className="mb-4">
+                <label className="block font-medium mb-2" style={{ color: '#374151' }}>
+                  Please solve this math problem: {captchaQuestion.num1} + {captchaQuestion.num2} = ?
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={captchaAnswer}
+                    onChange={handleCaptchaChange}
+                    required
+                    placeholder="Enter your answer"
+                    className="w-32 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                    style={{ 
+                      borderColor: captchaError ? '#EF4444' : '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={generateCaptcha}
+                    className="px-3 py-2 text-sm border-2 rounded-lg hover:bg-gray-50 transition-all"
+                    style={{ borderColor: '#E5E7EB', color: '#374151' }}
+                    title="Generate new question"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                </div>
+                {captchaError && (
+                  <p className="text-red-500 text-sm mt-2">Incorrect answer. Please try again.</p>
+                )}
+              </div>
+              
               <div className="flex items-center mb-4">
                 <input
                   type="checkbox"
@@ -1630,7 +1662,15 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   className="text-sm"
                   style={{ color: '#374151' }}
                 >
-                  I agree to the processing of my personal data in accordance with the Data Privacy Act of 2012 and ISO 27001-aligned policies.
+                  I accept the{' '}
+                  <button
+                    type="button"
+                    onClick={() => setShowTermsModal(true)}
+                    className="underline hover:no-underline"
+                    style={{ color: buttonColor }}
+                  >
+                    terms and conditions
+                  </button>
                 </label>
               </div>
             </section>
@@ -1756,6 +1796,377 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 className="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center px-8 py-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Terms & Conditions</h2>
+                <p className="text-sm text-gray-500 mt-1">ATSS Fiber Internet Services</p>
+              </div>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto px-8 py-6 bg-gray-50">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+                <p className="text-gray-700 leading-relaxed">
+                  By using our internet services, you agree to the Terms and Conditions and Privacy Policy outlined below. 
+                  These ensure your protection, quality service, and secure network operations.
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('terms')}
+                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900">Terms and Conditions</h3>
+                    <svg 
+                      className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.includes('terms') ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedSections.includes('terms') && (
+                    <div className="px-6 pb-6 space-y-4 border-t border-gray-100">
+                      <div className="pt-4">
+                        <h4 className="font-semibold text-gray-900 mb-2">Service Provision</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">ATSS provides internet services on a best-effort basis. Actual speeds and service quality may vary depending on network conditions, customer equipment, location, and external factors.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Installation & Equipment</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">All installed network equipment provided by ATSS remains company property unless otherwise stated. Customers are responsible for safeguarding installed equipment. Any loss, damage, or unauthorized relocation may be subject to replacement or service fees.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Billing & Payments</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">Internet service is billed in advance. Failure to settle payments on or before the due date may result in temporary service restriction or suspension without prior notice. Reconnection may be subject to applicable fees. Long-term non-payment may result in permanent service termination.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Acceptable Use</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">Customers agree not to use the service for illegal activities, network abuse, spam distribution, unauthorized resale, or actions that may degrade network performance for other users. ATSS reserves the right to suspend or terminate service, with or without notice, in cases of policy violation.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Service Interruptions</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">Service interruptions may occur due to maintenance, equipment failure, power outages, force majeure, or third-party network issues. ATSS will make reasonable efforts to restore service promptly. Scheduled maintenance may be performed without prior notice when necessary to protect network stability.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Updates to Terms</h4>
+                        <p className="text-gray-600 text-sm leading-relaxed">ATSS may update these terms from time to time. Continued use of the service constitutes acceptance of the updated terms.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('privacy')}
+                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900">Privacy Policy</h3>
+                    <svg 
+                      className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.includes('privacy') ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedSections.includes('privacy') && (
+                    <div className="px-6 pb-6 space-y-4 border-t border-gray-100">
+                      <div className="pt-4">
+                        <p className="text-gray-600 text-sm leading-relaxed mb-4">ATSS is committed to protecting personal data in accordance with the Data Privacy Act of 2012 (RA 10173) and National Privacy Commission regulations.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Information We Collect</h4>
+                        <ul className="space-y-1.5 text-gray-600 text-sm">
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Full name, address, contact number, and email</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Valid ID (type, number, and copy)</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Billing and payment records</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Service and account information</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Internet usage logs (IP, MAC, bandwidth usage)</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Customer support interactions</span>
+                          </li>
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Why We Collect Your Information</h4>
+                        <ul className="space-y-1.5 text-gray-600 text-sm">
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Create and verify your account</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Provide, maintain, and troubleshoot your internet service</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Process billing and payments</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Deliver customer support</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Secure our network</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Comply with legal and regulatory requirements (BIR, LGU, NTC, law enforcement)</span>
+                          </li>
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">How Your Data Is Shared</h4>
+                        <ul className="space-y-1.5 text-gray-600 text-sm">
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Authorized ATSS employees</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Third-party service providers (e.g., Appsheet)</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Payment gateways</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Government agencies when required by law</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span className="font-semibold">We DO NOT sell your personal data.</span>
+                          </li>
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Data Retention</h4>
+                        <ul className="space-y-1.5 text-gray-600 text-sm">
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Subscriber & Billing: 1 year from termination</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Network Logs: 1 year</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Support Records: 2 years</span>
+                          </li>
+                        </ul>
+                        <p className="text-gray-600 text-sm mt-2">After these periods, data is securely deleted or destroyed.</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Your Rights</h4>
+                        <ul className="space-y-1.5 text-gray-600 text-sm">
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Access your personal information</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Request correction of data</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Withdraw consent</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>Request deletion</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="text-gray-400 mr-2">•</span>
+                            <span>File a complaint with NPC</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <button
+                    onClick={() => toggleSection('contact')}
+                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+                    <svg 
+                      className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.includes('contact') ? 'rotate-180' : ''}`}
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedSections.includes('contact') && (
+                    <div className="px-6 pb-6 border-t border-gray-100">
+                      <div className="pt-4 space-y-4">
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">Data Protection Officer</h4>
+                          <div className="space-y-2 text-sm">
+                            <p className="text-gray-600"><span className="font-medium text-gray-700">Name:</span> Joselito Abdao</p>
+                            <p className="text-gray-600"><span className="font-medium text-gray-700">Email:</span> dpo@atssfiber.ph</p>
+                            <p className="text-gray-600"><span className="font-medium text-gray-700">Address:</span> Purok 4 Zone 8 Cupang Antipolo Rizal</p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">Customer Support</h4>
+                          <div className="space-y-2 text-sm">
+                            <p className="text-gray-600"><span className="font-medium text-gray-700">Phone:</span> 0956 370 4451</p>
+                            <p className="text-gray-600"><span className="font-medium text-gray-700">Email:</span> support@atssfiber.ph</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
+                <p className="text-gray-700 text-sm leading-relaxed">
+                  <span className="font-semibold">By continuing, you confirm that you have read, understood, and agree to the ATSS Terms & Conditions and Privacy Policy,</span> including service limitations, billing policies, and acceptable use guidelines.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center px-8 py-4 border-t border-gray-200 bg-white">
+              <button
+                onClick={() => setExpandedSections(['terms', 'privacy', 'contact'])}
+                className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Expand All
+              </button>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="px-6 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMapModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 relative">
+            <button
+              onClick={() => setShowMapModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">Pin Your Location</h3>
+            <p className="text-center text-gray-600 mb-4">Click on the map or drag the marker to set your location</p>
+            <div className="mb-4 flex justify-center">
+              <button
+                type="button"
+                onClick={handleGetMyLocation}
+                className="px-4 py-2 text-white rounded hover:opacity-90 transition-all flex items-center gap-2"
+                style={{ backgroundColor: buttonColor }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Get My Location
+              </button>
+            </div>
+            <div className="h-96 w-full mb-4">
+              <LocationMap
+                center={mapCenter}
+                onLocationSelect={handleMapLocationSelect}
+                buttonColor={buttonColor}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2 text-gray-700">Latitude</label>
+              <input
+                type="number"
+                step="0.000001"
+                value={selectedPosition?.lat || mapCenter.lat}
+                onChange={(e) => setSelectedPosition({ lat: parseFloat(e.target.value), lng: selectedPosition?.lng || mapCenter.lng })}
+                className="w-full border rounded px-3 py-2 mb-2"
+                style={{ borderColor: '#E5E7EB' }}
+              />
+              <label className="block text-sm font-medium mb-2 text-gray-700">Longitude</label>
+              <input
+                type="number"
+                step="0.000001"
+                value={selectedPosition?.lng || mapCenter.lng}
+                onChange={(e) => setSelectedPosition({ lat: selectedPosition?.lat || mapCenter.lat, lng: parseFloat(e.target.value) })}
+                className="w-full border rounded px-3 py-2"
+                style={{ borderColor: '#E5E7EB' }}
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowMapModal(false)}
+                className="px-6 py-2 border-2 rounded hover:bg-gray-50"
+                style={{ borderColor: '#E5E7EB', color: '#374151' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmLocation}
+                className="px-6 py-2 text-white rounded hover:opacity-90"
+                style={{ backgroundColor: buttonColor }}
+              >
+                Confirm Location
               </button>
             </div>
           </div>

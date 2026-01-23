@@ -22,6 +22,7 @@ class Application extends Model
         'mobile_number',
         'secondary_mobile_number',
         'installation_address',
+        'long_lat',
         'landmark',
         'region',
         'city',
