@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Camera, Upload, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 
 interface CameraFileInputProps {
   label: string;
@@ -27,7 +27,6 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
   textColor,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,7 +45,6 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
     onChange(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   return (
@@ -56,21 +54,13 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
       </label>
       
       {!value ? (
-        <div className="flex gap-2">
+        <div>
           <input
             ref={fileInputRef}
             type="file"
             name={name}
             onChange={handleFileChange}
-            accept={accept}
-            className="hidden"
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            name={`${name}_camera`}
-            onChange={handleFileChange}
-            accept="image/*"
+            accept="image/*,application/pdf"
             capture="environment"
             className="hidden"
           />
@@ -78,21 +68,11 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex-1 flex items-center justify-center gap-2 border rounded px-4 py-3 hover:opacity-80 transition-all"
+            className="w-full flex items-center justify-center gap-2 border rounded px-4 py-3 hover:opacity-80 transition-all"
             style={{ borderColor, backgroundColor, color: textColor }}
           >
             <Upload className="w-5 h-5" />
             <span className="text-sm">Upload File</span>
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => cameraInputRef.current?.click()}
-            className="flex-1 flex items-center justify-center gap-2 border rounded px-4 py-3 hover:opacity-80 transition-all"
-            style={{ borderColor, backgroundColor, color: textColor }}
-          >
-            <Camera className="w-5 h-5" />
-            <span className="text-sm">Take Photo</span>
           </button>
         </div>
       ) : (

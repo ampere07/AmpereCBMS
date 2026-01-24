@@ -554,7 +554,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         if (!formData.region) missing.push('Region');
         if (!formData.city) missing.push('City/Municipality');
         if (!formData.barangay) missing.push('Barangay');
-        if (!formData.completeLocation) missing.push('Complete Location');
         if (!formData.installationAddress) missing.push('Installation Address');
         if (!formData.landmark) missing.push('Landmark');
         if (!formData.nearestLandmark1Image) missing.push('Nearest Landmark #1 Image');
@@ -1038,30 +1037,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               <option key={village.id} value={village.village_code}>{village.village_name}</option>
             ))}
           </select>
-        </div>
-        
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: getLabelColor() }}>
-            Complete Location {requireFields && <span className="text-red-500">*</span>}
-          </label>
-          <input
-            type="text"
-            id="completeLocation"
-            name="completeLocation"
-            value={fullLocationText}
-            readOnly
-            required={requireFields}
-            placeholder="Select region, city, barangay, and location above"
-            className="w-full border rounded px-3 py-2"
-            style={{ 
-              borderColor: getBorderColor(),
-              backgroundColor: isColorDark(formBgColor) ? '#0a0a0a' : '#f9fafb',
-              color: getTextColor()
-            }}
-          />
-          {!fullLocationText && (
-            <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>This field will auto-populate based on your selections above</small>
-          )}
         </div>
         
         <div className="col-span-1 md:col-span-2 mb-4">

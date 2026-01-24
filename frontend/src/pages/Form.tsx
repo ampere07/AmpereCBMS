@@ -1331,30 +1331,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   </select>
                 </div>
                 
-                <div className="mb-4">
-                  <label className="block font-medium mb-2" htmlFor="completeLocation" style={{ color: '#374151' }}>
-                    Complete Location {requireFields && <span className="text-red-500">*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    id="completeLocation"
-                    name="completeLocation"
-                    value={fullLocationText}
-                    readOnly
-                    required={requireFields}
-                    placeholder="Select region, city, barangay, and location above"
-                    className="w-full border rounded px-3 py-2"
-                    style={{ 
-                      borderColor: '#E5E7EB',
-                      backgroundColor: '#F3F4F6',
-                      color: '#6B7280'
-                    }}
-                  />
-                  {!fullLocationText && (
-                    <small className="text-sm" style={{ color: '#6B7280' }}>This field will auto-populate based on your selections above</small>
-                  )}
-                </div>
-                
                 <div className="col-span-1 md:col-span-2 mb-4">
                   <div className="flex justify-between items-center mb-2">
                     <label className="block font-medium" htmlFor="installationAddress" style={{ color: '#374151' }}>
