@@ -46,7 +46,6 @@ interface FormState {
   city: string;
   barangay: string;
   location: string;
-  completeLocation: string;
   installationAddress: string;
   coordinates: string;
   landmark: string;
@@ -336,7 +335,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     city: '',
     barangay: '',
     location: '',
-    completeLocation: '',
     installationAddress: '',
     coordinates: '',
     landmark: '',
@@ -403,8 +401,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             ...prev,
             city: '',
             barangay: '',
-            location: '',
-            completeLocation: ''
+            location: ''
           }));
           setBarangays([]);
         } catch (error) {
@@ -450,8 +447,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           setFormData(prev => ({
             ...prev,
             barangay: '',
-            location: '',
-            completeLocation: ''
+            location: ''
           }));
           setVillages([]);
         } catch (error) {
@@ -478,8 +474,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           setVillages(data.villages || []);
           setFormData(prev => ({
             ...prev,
-            location: '',
-            completeLocation: ''
+            location: ''
           }));
         } catch (error) {
           console.error('Error fetching villages:', error);
@@ -493,43 +488,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     fetchVillages();
   }, [formData.barangay]);
 
-  const [fullLocationText, setFullLocationText] = useState<string>('');
 
-  useEffect(() => {
-    const selectedRegion = regions.find(r => r.region_code === formData.region);
-    const selectedCity = cities.find(c => c.city_code === formData.city);
-    const selectedBarangay = barangays.find(b => b.barangay_code === formData.barangay);
-    const selectedLocation = villages.find(v => v.village_code === formData.location);
-    
-    let locationText = '';
-    const locationParts = [];
-    
-    if (selectedLocation) {
-      locationParts.push(selectedLocation.village_name);
-    }
-    
-    if (selectedBarangay) {
-      locationParts.push(selectedBarangay.barangay_name);
-    }
-    
-    if (selectedCity) {
-      locationParts.push(selectedCity.city_name);
-    }
-    
-    if (selectedRegion) {
-      locationParts.push(selectedRegion.region_name);
-    }
-    
-    locationText = locationParts.join(', ');
-    
-    setFullLocationText(locationText);
-    if (locationText) {
-      setFormData(prev => ({
-        ...prev,
-        completeLocation: locationText
-      }));
-    }
-  }, [formData.region, formData.city, formData.barangay, formData.location, regions, cities, barangays, villages]);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => 
@@ -771,7 +730,6 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       city: '',
       barangay: '',
       location: '',
-      completeLocation: '',
       installationAddress: '',
       coordinates: '',
       landmark: '',
@@ -1401,7 +1359,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   label="Nearest Landmark #1 Image"
                   name="nearestLandmark1Image"
                   required={requireFields}
-                  accept=".jpg,.jpeg,.png"
+                  accept="image/*,application/pdf"
                   value={formData.nearestLandmark1Image}
                   onChange={(file) => handleFileChange('nearestLandmark1Image', file)}
                   labelColor="#374151"
@@ -1414,7 +1372,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   label="Nearest Landmark #2 Image"
                   name="nearestLandmark2Image"
                   required={requireFields}
-                  accept=".jpg,.jpeg,.png"
+                  accept="image/*,application/pdf"
                   value={formData.nearestLandmark2Image}
                   onChange={(file) => handleFileChange('nearestLandmark2Image', file)}
                   labelColor="#374151"
@@ -1519,7 +1477,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   label="Proof of Billing"
                   name="proofOfBilling"
                   required={requireFields}
-                  accept=".jpg,.jpeg,.png,.pdf"
+                  accept="image/*,application/pdf"
                   value={formData.proofOfBilling}
                   onChange={(file) => handleFileChange('proofOfBilling', file)}
                   labelColor="#374151"
@@ -1532,7 +1490,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   label="Government Valid ID (Primary)"
                   name="governmentIdPrimary"
                   required={requireFields}
-                  accept=".jpg,.jpeg,.png,.pdf"
+                  accept="image/*,application/pdf"
                   value={formData.governmentIdPrimary}
                   onChange={(file) => handleFileChange('governmentIdPrimary', file)}
                   labelColor="#374151"
@@ -1545,7 +1503,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   label="Government Valid ID (Secondary)"
                   name="governmentIdSecondary"
                   required={false}
-                  accept=".jpg,.jpeg,.png,.pdf"
+                  accept="image/*,application/pdf"
                   value={formData.governmentIdSecondary}
                   onChange={(file) => handleFileChange('governmentIdSecondary', file)}
                   labelColor="#374151"
@@ -1558,7 +1516,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   label="House Front Picture"
                   name="houseFrontPicture"
                   required={requireFields}
-                  accept=".jpg,.jpeg,.png"
+                  accept="image/*,application/pdf"
                   value={formData.houseFrontPicture}
                   onChange={(file) => handleFileChange('houseFrontPicture', file)}
                   labelColor="#374151"
@@ -1573,7 +1531,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       label="Promo Proof Document"
                       name="promoProof"
                       required={requireFields}
-                      accept=".jpg,.jpeg,.png,.pdf"
+                      accept="image/*,application/pdf"
                       value={formData.promoProof}
                       onChange={(file) => handleFileChange('promoProof', file)}
                       labelColor="#374151"
