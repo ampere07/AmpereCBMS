@@ -470,15 +470,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     setCaptchaError(false);
   };
 
-  const formatPlanName = (planName: string): string => {
-    return planName
-      .replace(/\s*-?\s*WFH\s*/gi, '')
-      .replace(/\s*-?\s*Work from Home\s*/gi, '')
-      .replace(/\s*-?\s*VIP\s*/gi, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
@@ -1151,9 +1142,16 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             }}
           >
             <option value="">Select plan</option>
-            {plans.map(plan => (
+            {plans
+              .filter(plan => {
+                const planNameLower = plan.plan_name.toLowerCase();
+                return !planNameLower.includes('wfh') && 
+                       !planNameLower.includes('vip') && 
+                       !planNameLower.includes('work from home');
+              })
+              .map(plan => (
               <option key={plan.id} value={plan.id}>
-                {formatPlanName(plan.plan_name)} - ₱{plan.price.toLocaleString()}
+                {plan.plan_name} - ₱{plan.price.toLocaleString()}
               </option>
             ))}
           </select>
