@@ -104,7 +104,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [brandName, setBrandName] = useState<string>('');
-  const [initialEditValues, setInitialEditValues] = useState<{backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string; formBgColor: string; formBgOpacity: number}>({backgroundColor: '', buttonColor: '', logoPreview: '', brandName: '', formBgColor: '', formBgOpacity: 100});
+  const [initialEditValues, setInitialEditValues] = useState<{ backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string; formBgColor: string; formBgOpacity: number }>({ backgroundColor: '', buttonColor: '', logoPreview: '', brandName: '', formBgColor: '', formBgOpacity: 100 });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
@@ -112,22 +112,22 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [saveErrorMessage, setSaveErrorMessage] = useState('');
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
-  
+
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
-    
+
     if (url.includes('drive.google.com/file/d/')) {
       const fileId = url.split('/file/d/')[1].split('/')[0];
       return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
     }
-    
+
     if (url.includes('drive.google.com/uc?')) {
       return url;
     }
-    
+
     return url;
   };
-  
+
   useEffect(() => {
     const fetchUISettings = async () => {
       try {
@@ -138,15 +138,15 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             if (result.data.page_hex) {
               setBackgroundColor(result.data.page_hex);
             }
-            
+
             if (result.data.button_hex) {
               setButtonColor(result.data.button_hex);
             }
-            
+
             if (result.data.form_hex) {
               setFormBgColor(result.data.form_hex);
             }
-            
+
             if (result.data.transparency_rgba) {
               const rgbaMatch = result.data.transparency_rgba.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)/);
               if (rgbaMatch) {
@@ -154,12 +154,12 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 setFormBgOpacity(Math.round(a * 100));
               }
             }
-            
+
             if (result.data.logo_url) {
               const convertedUrl = convertGDriveUrl(result.data.logo_url);
               setLogoPreview(convertedUrl);
             }
-            
+
             if (result.data.brand_name) {
               setBrandName(result.data.brand_name);
             }
@@ -169,11 +169,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         console.error('Error fetching UI settings:', error);
       }
     };
-    
+
     fetchUISettings();
     generateCaptcha();
   }, []);
-  
+
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
@@ -182,7 +182,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [promos, setPromos] = useState<Promo[]>([]);
 
   useImperativeHandle(ref, () => ({
-    saveColors: () => {}
+    saveColors: () => { }
   }));
 
   const handleEdit = () => {
@@ -200,7 +200,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
-    
+
     if (!isEditMode) {
       setInitialEditValues({
         backgroundColor: backgroundColor,
@@ -212,7 +212,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       });
       setHasUnsavedChanges(false);
     }
-    
+
     if (onEditModeChange) {
       onEditModeChange(!isEditMode);
     }
@@ -235,39 +235,39 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     try {
       setIsSavingSettings(true);
       setSaveErrorMessage('');
-      
+
       const formData = new FormData();
-      
+
       if (backgroundColor) {
         formData.append('page_hex', backgroundColor);
       }
-      
+
       if (buttonColor) {
         formData.append('button_hex', buttonColor);
       }
-      
+
       if (formBgColor) {
         formData.append('form_hex', formBgColor);
       }
       if (formBgColor && formBgOpacity !== null) {
-        const r = parseInt(formBgColor.slice(1,3), 16);
-        const g = parseInt(formBgColor.slice(3,5), 16);
-        const b = parseInt(formBgColor.slice(5,7), 16);
+        const r = parseInt(formBgColor.slice(1, 3), 16);
+        const g = parseInt(formBgColor.slice(3, 5), 16);
+        const b = parseInt(formBgColor.slice(5, 7), 16);
         const rgbaValue = `rgba(${r}, ${g}, ${b}, ${(formBgOpacity / 100).toFixed(2)})`;
         formData.append('transparency_rgba', rgbaValue);
       }
-      
+
       if (logoFile) {
         formData.append('logo', logoFile);
       }
-      
+
       if (brandName) {
         formData.append('brand_name', brandName);
       }
-      
+
       const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
       formData.append('multi_step', multiStepValue);
-      
+
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
         headers: {
@@ -275,7 +275,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         },
         body: formData
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
@@ -377,7 +377,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           throw new Error('Failed to fetch plans');
         }
         const data = await response.json();
-        setPlans(data.data || []);
+        const sortedPlans = (data.data || []).sort((a: Plan, b: Plan) => a.price - b.price);
+        setPlans(sortedPlans);
       } catch (error) {
         console.error('Error fetching plans:', error);
         setPlans([]);
@@ -491,8 +492,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
 
   const toggleSection = (section: string) => {
-    setExpandedSections(prev => 
-      prev.includes(section) 
+    setExpandedSections(prev =>
+      prev.includes(section)
         ? prev.filter(s => s !== section)
         : [...prev, section]
     );
@@ -517,8 +518,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   };
 
   const handleFileChange = (fieldName: string, file: File | null) => {
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       [fieldName]: file
     }));
   };
@@ -529,66 +530,66 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (parseInt(captchaAnswer) !== captchaQuestion.answer) {
       setCaptchaError(true);
       return;
     }
-    
+
     if (!formData.privacyAgreement) {
       setValidationMessage('Please agree to the privacy policy before submitting.');
       setShowValidationModal(true);
       return;
     }
-    
+
     if (requireFields) {
       const missingImages = [];
-      
+
       if (!formData.nearestLandmark1Image) {
         missingImages.push('Nearest Landmark #1 Image');
       }
-      
+
       if (!formData.nearestLandmark2Image) {
         missingImages.push('Nearest Landmark #2 Image');
       }
-      
+
       if (!formData.proofOfBilling) {
         missingImages.push('Proof of Billing');
       }
-      
+
       if (!formData.governmentIdPrimary) {
         missingImages.push('Government Valid ID (Primary)');
       }
-      
+
       if (!formData.houseFrontPicture) {
         missingImages.push('House Front Picture');
       }
-      
+
       if (formData.promo && formData.promo !== '' && !formData.promoProof) {
         missingImages.push('Promo Proof Document');
       }
-      
+
       if (missingImages.length > 0) {
         setValidationMessage(`Please upload the following required documents:\n\n${missingImages.join('\n')}`);
         setShowValidationModal(true);
         return;
       }
     }
-    
+
     const submissionData = new FormData();
-    
+
     submissionData.append('firstName', formData.firstName);
     submissionData.append('middleInitial', formData.middleInitial);
     submissionData.append('lastName', formData.lastName);
     submissionData.append('email', formData.email);
     submissionData.append('mobile', formData.mobile);
     submissionData.append('secondaryMobile', formData.secondaryMobile || '');
-    
+
     const selectedRegion = formData.region ? regions.find(r => r.region_code === formData.region)?.region_name || '' : '';
     const selectedCity = formData.city ? cities.find(c => c.city_code === formData.city)?.city_name || '' : '';
     const selectedBarangay = formData.barangay ? barangays.find(b => b.barangay_code === formData.barangay)?.barangay_name || '' : '';
     const selectedLocation = formData.location ? villages.find(v => v.village_code === formData.location)?.village_name || '' : '';
-    
+
     submissionData.append('region', selectedRegion);
     submissionData.append('city', selectedCity);
     submissionData.append('barangay', selectedBarangay);
@@ -597,41 +598,41 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     submissionData.append('coordinates', formData.coordinates || '');
     submissionData.append('landmark', formData.landmark);
     submissionData.append('referredBy', formData.referredBy);
-    
+
     submissionData.append('plan', formData.plan);
     submissionData.append('promo', formData.promo || '');
-    
+
     if (formData.proofOfBilling) {
       submissionData.append('proofOfBilling', formData.proofOfBilling);
     }
-    
+
     if (formData.governmentIdPrimary) {
       submissionData.append('governmentIdPrimary', formData.governmentIdPrimary);
     }
-    
+
     if (formData.governmentIdSecondary) {
       submissionData.append('governmentIdSecondary', formData.governmentIdSecondary);
     }
-    
+
     if (formData.houseFrontPicture) {
       submissionData.append('houseFrontPicture', formData.houseFrontPicture);
     }
-    
+
     if (formData.nearestLandmark1Image) {
       submissionData.append('nearestLandmark1Image', formData.nearestLandmark1Image);
     }
-    
+
     if (formData.nearestLandmark2Image) {
       submissionData.append('nearestLandmark2Image', formData.nearestLandmark2Image);
     }
-    
+
     if (formData.promoProof) {
       submissionData.append('promoProof', formData.promoProof);
     }
-    
+
     try {
       setIsSubmitting(true);
-      
+
       const response = await fetch(`${apiBaseUrl}/api/application/store`, {
         method: 'POST',
         body: submissionData,
@@ -640,7 +641,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           'Accept': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         if (errorData.errors) {
@@ -649,20 +650,20 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         }
         throw new Error(errorData.message || 'Failed to submit application');
       }
-      
+
       const result = await response.json();
-      
+
       setIsSubmitting(false);
       setShowSuccessModal(true);
       generateCaptcha();
-      
+
     } catch (error) {
       let errorMessage = 'Failed to submit application. Please try again.';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       setSubmitErrorMessage(errorMessage);
       setIsSubmitting(false);
       setShowSubmitFailedModal(true);
@@ -736,12 +737,12 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       promoProof: null,
       privacyAgreement: false
     });
-    
+
     const fileInputs = document.querySelectorAll('input[type="file"]');
     fileInputs.forEach((input) => {
       (input as HTMLInputElement).value = '';
     });
-    
+
     generateCaptcha();
   };
 
@@ -759,7 +760,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 Save
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
@@ -781,7 +782,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   }}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Logo
@@ -798,7 +799,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   }}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Background Color
@@ -833,7 +834,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Button Color
@@ -868,7 +869,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Form Background Color
@@ -903,7 +904,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
                   Form Transparency
@@ -946,9 +947,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 <small className="text-xs mt-1 block" style={{ color: '#6B7280' }}>0% = transparent, 100% = opaque</small>
               </div>
             </div>
-            
+
             <div className="mt-4">
-              
+
               {onLayoutChange && (
                 <div>
                   <label className="block text-sm font-medium mb-3" style={{ color: '#374151' }}>
@@ -978,7 +979,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         )}
                       </div>
                     </button>
-                    
+
                     <button
                       type="button"
                       onClick={() => onLayoutChange('multistep')}
@@ -1008,14 +1009,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             </div>
           </div>
         )}
-        
-        <div className="rounded-lg transition-colors p-8" style={{ backgroundColor: `rgba(${formBgColor ? `${parseInt(formBgColor.slice(1,3), 16)}, ${parseInt(formBgColor.slice(3,5), 16)}, ${parseInt(formBgColor.slice(5,7), 16)}` : '255, 255, 255'}, ${(formBgOpacity / 100).toFixed(2)})`, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+
+        <div className="rounded-lg transition-colors p-8" style={{ backgroundColor: `rgba(${formBgColor ? `${parseInt(formBgColor.slice(1, 3), 16)}, ${parseInt(formBgColor.slice(3, 5), 16)}, ${parseInt(formBgColor.slice(5, 7), 16)}` : '255, 255, 255'}, ${(formBgOpacity / 100).toFixed(2)})`, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
           <div className="mb-6 flex justify-center items-center py-8">
             {logoPreview ? (
-              <img 
-                src={logoPreview} 
-                alt="Logo" 
-                className="h-24 object-contain" 
+              <img
+                src={logoPreview}
+                alt="Logo"
+                className="h-24 object-contain"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   console.error('Logo failed to load:', logoPreview);
@@ -1027,11 +1028,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               <div className="text-2xl font-bold" style={{ color: '#1F2937' }}>LOGO</div>
             )}
           </div>
-          
+
           <div className="mb-8 text-center">
             <p className="text-sm" style={{ color: '#6B7280' }}>Powered by SYNC</p>
           </div>
-          
+
           <div className="flex justify-between items-center mb-6">
             {showEditButton && (
               <button
@@ -1042,11 +1043,11 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
               </button>
             )}
           </div>
-      
+
           <form onSubmit={handleSubmit}>
             <section className="mb-8">
               <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Contact Information</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="email" style={{ color: '#374151' }}>
@@ -1061,14 +1062,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     placeholder="Enter your email address"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="firstName" style={{ color: '#374151' }}>
                     First Name {requireFields && <span className="text-red-500">*</span>}
@@ -1082,7 +1083,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     placeholder="Enter your first name"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1103,14 +1104,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     maxLength={1}
                     placeholder="M"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="lastName" style={{ color: '#374151' }}>
                     Last Name {requireFields && <span className="text-red-500">*</span>}
@@ -1124,14 +1125,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     placeholder="Enter your last name"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
                 </div>
-                                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="mobile" style={{ color: '#374151' }}>
                     Mobile {requireFields && <span className="text-red-500">*</span>}
@@ -1146,7 +1147,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     placeholder="09********"
                     pattern="09[0-9]{9}"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1154,7 +1155,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                   <small className="text-sm" style={{ color: '#6B7280' }}>Format: 09********</small>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: '#374151' }}>
                     Secondary Mobile
@@ -1168,7 +1169,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     placeholder="09********"
                     pattern="09[0-9]{9}"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1177,10 +1178,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
               </div>
             </section>
-            
+
             <section className="mb-8">
               <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Installation Address</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="region" style={{ color: '#374151' }}>
@@ -1193,7 +1194,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     required={requireFields}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1205,7 +1206,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="city" style={{ color: '#374151' }}>
                     City/Municipality {requireFields && <span className="text-red-500">*</span>}
@@ -1218,7 +1219,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     disabled={!formData.region}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1230,7 +1231,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: '#374151' }}>
                     Barangay {requireFields && <span className="text-red-500">*</span>}
@@ -1243,7 +1244,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     disabled={!formData.city}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1255,7 +1256,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="location" style={{ color: '#374151' }}>
                     Location
@@ -1267,7 +1268,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     disabled={!formData.barangay}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1279,7 +1280,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="col-span-1 md:col-span-2 mb-4">
                   <div className="flex justify-between items-center mb-2">
                     <label className="block font-medium" htmlFor="installationAddress" style={{ color: '#374151' }}>
@@ -1303,7 +1304,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     placeholder="Enter complete address details"
                     rows={3}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1316,7 +1317,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       readOnly
                       placeholder="Coordinates will appear here after pinning location"
                       className="w-full border rounded px-3 py-2"
-                      style={{ 
+                      style={{
                         borderColor: '#E5E7EB',
                         backgroundColor: '#F3F4F6',
                         color: '#6B7280'
@@ -1324,7 +1325,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     />
                   </div>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="landmark" style={{ color: '#374151' }}>
                     Landmark {requireFields && <span className="text-red-500">*</span>}
@@ -1338,14 +1339,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required={requireFields}
                     placeholder="Enter a landmark"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
                   />
                 </div>
-                
+
                 <CameraFileInput
                   label="Nearest Landmark #1 Image"
                   name="nearestLandmark1Image"
@@ -1358,7 +1359,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   backgroundColor="#FFFFFF"
                   textColor="#1F2937"
                 />
-                
+
                 <CameraFileInput
                   label="Nearest Landmark #2 Image"
                   name="nearestLandmark2Image"
@@ -1371,7 +1372,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   backgroundColor="#FFFFFF"
                   textColor="#1F2937"
                 />
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>
                     Referred By
@@ -1384,7 +1385,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     placeholder="Enter referrer name (optional)"
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1393,10 +1394,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
               </div>
             </section>
-            
+
             <section className="mb-8">
               <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Plan Selection</h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="plan" style={{ color: '#374151' }}>
@@ -1409,7 +1410,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     required={requireFields}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1419,18 +1420,18 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     {plans
                       .filter(plan => {
                         const planNameLower = plan.plan_name.toLowerCase();
-                        return !planNameLower.includes('wfh') && 
-                               !planNameLower.includes('vip') && 
-                               !planNameLower.includes('work from home');
+                        return !planNameLower.includes('wfh') &&
+                          !planNameLower.includes('vip') &&
+                          !planNameLower.includes('work from home');
                       })
                       .map(plan => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.plan_name} - ₱{plan.price.toLocaleString()}
-                      </option>
-                    ))}
+                        <option key={plan.id} value={plan.id}>
+                          {plan.plan_name} {plan.price}
+                        </option>
+                      ))}
                   </select>
                 </div>
-                
+
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="promo" style={{ color: '#374151' }}>
                     Promo
@@ -1441,7 +1442,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     value={formData.promo}
                     onChange={handleInputChange}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ 
+                    style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1464,12 +1465,12 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </div>
               </div>
             </section>
-            
+
             <section className="mb-8">
               <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Upload Documents</h3>
-              
+
               <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <CameraFileInput
                   label="Proof of Billing"
@@ -1483,7 +1484,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   backgroundColor="#FFFFFF"
                   textColor="#1F2937"
                 />
-                
+
                 <CameraFileInput
                   label="Government Valid ID (Primary)"
                   name="governmentIdPrimary"
@@ -1496,7 +1497,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   backgroundColor="#FFFFFF"
                   textColor="#1F2937"
                 />
-                
+
                 <CameraFileInput
                   label="Government Valid ID (Secondary)"
                   name="governmentIdSecondary"
@@ -1509,7 +1510,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   backgroundColor="#FFFFFF"
                   textColor="#1F2937"
                 />
-                
+
                 <CameraFileInput
                   label="House Front Picture"
                   name="houseFrontPicture"
@@ -1522,7 +1523,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   backgroundColor="#FFFFFF"
                   textColor="#1F2937"
                 />
-                
+
                 {formData.promo && formData.promo !== '' && (
                   <div>
                     <CameraFileInput
@@ -1542,7 +1543,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 )}
               </div>
             </section>
-            
+
             <section className="mb-8">
               <div className="mb-4">
                 <label className="block font-medium mb-2" style={{ color: '#374151' }}>
@@ -1556,7 +1557,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     required
                     placeholder="Enter your answer"
                     className="w-32 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-                    style={{ 
+                    style={{
                       borderColor: captchaError ? '#EF4444' : '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
@@ -1578,7 +1579,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   <p className="text-red-500 text-sm mt-2">Incorrect answer. Please try again.</p>
                 )}
               </div>
-              
+
               <div className="flex items-center mb-4">
                 <input
                   type="checkbox"
@@ -1589,8 +1590,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   required
                   className="mr-2 h-4 w-4"
                 />
-                <label 
-                  htmlFor="privacyAgreement" 
+                <label
+                  htmlFor="privacyAgreement"
                   className="text-sm"
                   style={{ color: '#374151' }}
                 >
@@ -1606,10 +1607,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </label>
               </div>
             </section>
-            
+
             <div className="flex justify-end">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="px-6 py-2 text-white rounded hover:opacity-90 disabled:opacity-50"
                 style={{
                   backgroundColor: buttonColor
@@ -1622,10 +1623,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
           </form>
         </div>
       </div>
-      
+
       {isSubmitting && (
-        <LoadingModal 
-          message="Submitting your application..." 
+        <LoadingModal
+          message="Submitting your application..."
           submessage="Please wait while we process your form."
           spinnerColor="blue"
         />
@@ -1652,8 +1653,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       )}
 
       {isSavingSettings && (
-        <LoadingModal 
-          message="Saving settings..." 
+        <LoadingModal
+          message="Saving settings..."
           spinnerColor="blue"
         />
       )}
@@ -1751,15 +1752,15 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                 </svg>
               </button>
             </div>
-            
+
             <div className="overflow-y-auto px-8 py-6 bg-gray-50">
               <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
                 <p className="text-gray-700 leading-relaxed">
-                  By using our internet services, you agree to the Terms and Conditions and Privacy Policy outlined below. 
+                  By using our internet services, you agree to the Terms and Conditions and Privacy Policy outlined below.
                   These ensure your protection, quality service, and secure network operations.
                 </p>
               </div>
-              
+
               <div className="space-y-3">
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <button
@@ -1767,10 +1768,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
                   >
                     <h3 className="text-lg font-semibold text-gray-900">Terms and Conditions</h3>
-                    <svg 
+                    <svg
                       className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.includes('terms') ? 'rotate-180' : ''}`}
-                      fill="none" 
-                      stroke="currentColor" 
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1782,27 +1783,27 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         <h4 className="font-semibold text-gray-900 mb-2">Service Provision</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">ATSS provides internet services on a best-effort basis. Actual speeds and service quality may vary depending on network conditions, customer equipment, location, and external factors.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Installation & Equipment</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">All installed network equipment provided by ATSS remains company property unless otherwise stated. Customers are responsible for safeguarding installed equipment. Any loss, damage, or unauthorized relocation may be subject to replacement or service fees.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Billing & Payments</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">Internet service is billed in advance. Failure to settle payments on or before the due date may result in temporary service restriction or suspension without prior notice. Reconnection may be subject to applicable fees. Long-term non-payment may result in permanent service termination.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Acceptable Use</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">Customers agree not to use the service for illegal activities, network abuse, spam distribution, unauthorized resale, or actions that may degrade network performance for other users. ATSS reserves the right to suspend or terminate service, with or without notice, in cases of policy violation.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Service Interruptions</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">Service interruptions may occur due to maintenance, equipment failure, power outages, force majeure, or third-party network issues. ATSS will make reasonable efforts to restore service promptly. Scheduled maintenance may be performed without prior notice when necessary to protect network stability.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Updates to Terms</h4>
                         <p className="text-gray-600 text-sm leading-relaxed">ATSS may update these terms from time to time. Continued use of the service constitutes acceptance of the updated terms.</p>
@@ -1810,17 +1811,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     </div>
                   )}
                 </div>
-                
+
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <button
                     onClick={() => toggleSection('privacy')}
                     className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
                   >
                     <h3 className="text-lg font-semibold text-gray-900">Privacy Policy</h3>
-                    <svg 
+                    <svg
                       className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.includes('privacy') ? 'rotate-180' : ''}`}
-                      fill="none" 
-                      stroke="currentColor" 
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1831,7 +1832,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       <div className="pt-4">
                         <p className="text-gray-600 text-sm leading-relaxed mb-4">ATSS is committed to protecting personal data in accordance with the Data Privacy Act of 2012 (RA 10173) and National Privacy Commission regulations.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Information We Collect</h4>
                         <ul className="space-y-1.5 text-gray-600 text-sm">
@@ -1861,7 +1862,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                           </li>
                         </ul>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Why We Collect Your Information</h4>
                         <ul className="space-y-1.5 text-gray-600 text-sm">
@@ -1891,7 +1892,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                           </li>
                         </ul>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">How Your Data Is Shared</h4>
                         <ul className="space-y-1.5 text-gray-600 text-sm">
@@ -1917,7 +1918,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                           </li>
                         </ul>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Data Retention</h4>
                         <ul className="space-y-1.5 text-gray-600 text-sm">
@@ -1936,7 +1937,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                         </ul>
                         <p className="text-gray-600 text-sm mt-2">After these periods, data is securely deleted or destroyed.</p>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Your Rights</h4>
                         <ul className="space-y-1.5 text-gray-600 text-sm">
@@ -1965,17 +1966,17 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     </div>
                   )}
                 </div>
-                
+
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <button
                     onClick={() => toggleSection('contact')}
                     className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors"
                   >
                     <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-                    <svg 
+                    <svg
                       className={`w-5 h-5 text-gray-500 transition-transform ${expandedSections.includes('contact') ? 'rotate-180' : ''}`}
-                      fill="none" 
-                      stroke="currentColor" 
+                      fill="none"
+                      stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1992,7 +1993,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                             <p className="text-gray-600"><span className="font-medium text-gray-700">Address:</span> Purok 4 Zone 8 Cupang Antipolo Rizal</p>
                           </div>
                         </div>
-                        
+
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h4 className="font-semibold text-gray-900 mb-3">Customer Support</h4>
                           <div className="space-y-2 text-sm">
@@ -2005,14 +2006,14 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   )}
                 </div>
               </div>
-              
+
               <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
                 <p className="text-gray-700 text-sm leading-relaxed">
                   <span className="font-semibold">By continuing, you confirm that you have read, understood, and agree to the ATSS Terms & Conditions and Privacy Policy,</span> including service limitations, billing policies, and acceptable use guidelines.
                 </p>
               </div>
             </div>
-            
+
             <div className="flex justify-between items-center px-8 py-4 border-t border-gray-200 bg-white">
               <button
                 onClick={() => setExpandedSections(['terms', 'privacy', 'contact'])}
