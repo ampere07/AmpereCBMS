@@ -35,6 +35,7 @@ Route::get('/regions', [GeographicController::class, 'getRegions']);
 Route::get('/cities', [GeographicController::class, 'getCities']);
 Route::get('/barangays', [GeographicController::class, 'getBarangays']);
 Route::get('/villages', [GeographicController::class, 'getVillages']);
+Route::get('/referrers', [GeographicController::class, 'getReferrers']);
 
 // Also keep singular versions for backward compatibility
 Route::get('/region', [GeographicController::class, 'getRegions']);

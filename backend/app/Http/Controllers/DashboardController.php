@@ -60,7 +60,7 @@ class DashboardController extends Controller
                     'city' => $application->city,
                     'plan' => $application->desired_plan,
                     'status' => $application->status ?? 'pending',
-                    'created_at' => $application->created_at->toISOString()
+                    'created_at' => $application->created_at->timezone('Asia/Manila')->toDateTimeString()
                 ];
             });
 

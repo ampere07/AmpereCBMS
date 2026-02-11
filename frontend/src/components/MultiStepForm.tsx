@@ -22,11 +22,7 @@ interface Barangay {
   barangay_name: string;
 }
 
-interface Village {
-  id: number;
-  village_code: string;
-  village_name: string;
-}
+
 
 interface Plan {
   id: number;
@@ -41,6 +37,11 @@ interface Promo {
   status: string;
 }
 
+interface Referrer {
+  id: number;
+  name: string;
+}
+
 interface FormState {
   email: string;
   mobile: string;
@@ -51,7 +52,6 @@ interface FormState {
   region: string;
   city: string;
   barangay: string;
-  location: string;
   installationAddress: string;
   coordinates: string;
   landmark: string;
@@ -301,9 +301,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [barangays, setBarangays] = useState<Barangay[]>([]);
-  const [villages, setVillages] = useState<Village[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [promos, setPromos] = useState<Promo[]>([]);
+  const [referrers, setReferrers] = useState<Referrer[]>([]);
 
   useImperativeHandle(ref, () => ({
     saveColors: () => { }
@@ -319,7 +319,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     region: '',
     city: '',
     barangay: '',
-    location: '',
     installationAddress: '',
     coordinates: '',
     landmark: '',
@@ -373,13 +372,29 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         const response = await fetch(`${apiBaseUrl}/api/promo_list`);
         if (!response.ok) throw new Error('Failed to fetch promos');
         const data = await response.json();
-        setPromos(data.data || []);
+        const activePromos = (data.data || []).filter((promo: Promo) => promo.status === 'active' || promo.status === 'Active');
+        setPromos(activePromos);
       } catch (error) {
         console.error('Error fetching promos:', error);
         setPromos([]);
       }
     };
     fetchPromos();
+  }, []);
+
+  useEffect(() => {
+    const fetchReferrers = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/referrers`);
+        if (!response.ok) throw new Error('Failed to fetch referrers');
+        const data = await response.json();
+        setReferrers(data.referrers || []);
+      } catch (error) {
+        console.error('Error fetching referrers:', error);
+        setReferrers([]);
+      }
+    };
+    fetchReferrers();
   }, []);
 
   useEffect(() => {
@@ -393,8 +408,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           setFormData(prev => ({
             ...prev,
             city: '',
-            barangay: '',
-            location: ''
+            barangay: ''
           }));
           setBarangays([]);
         } catch (error) {
@@ -418,10 +432,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           setBarangays(data.barangays || []);
           setFormData(prev => ({
             ...prev,
-            barangay: '',
-            location: ''
+            barangay: ''
           }));
-          setVillages([]);
         } catch (error) {
           console.error('Error fetching barangays:', error);
           setBarangays([]);
@@ -433,28 +445,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     fetchBarangays();
   }, [formData.city]);
 
-  useEffect(() => {
-    const fetchVillages = async () => {
-      if (formData.barangay) {
-        try {
-          const response = await fetch(`${apiBaseUrl}/api/villages?barangay_code=${formData.barangay}`);
-          if (!response.ok) throw new Error('Failed to fetch villages');
-          const data = await response.json();
-          setVillages(data.villages || []);
-          setFormData(prev => ({
-            ...prev,
-            location: ''
-          }));
-        } catch (error) {
-          console.error('Error fetching villages:', error);
-          setVillages([]);
-        }
-      } else {
-        setVillages([]);
-      }
-    };
-    fetchVillages();
-  }, [formData.barangay]);
+
 
 
 
@@ -575,12 +566,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     const selectedRegion = formData.region ? regions.find(r => r.region_code === formData.region)?.region_name || '' : '';
     const selectedCity = formData.city ? cities.find(c => c.city_code === formData.city)?.city_name || '' : '';
     const selectedBarangay = formData.barangay ? barangays.find(b => b.barangay_code === formData.barangay)?.barangay_name || '' : '';
-    const selectedLocation = formData.location ? villages.find(v => v.village_code === formData.location)?.village_name || '' : '';
+
 
     submissionData.append('region', selectedRegion);
     submissionData.append('city', selectedCity);
     submissionData.append('barangay', selectedBarangay);
-    submissionData.append('location', selectedLocation);
     submissionData.append('installationAddress', formData.installationAddress);
     submissionData.append('coordinates', formData.coordinates || '');
     submissionData.append('landmark', formData.landmark);
@@ -685,7 +675,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       region: '',
       city: '',
       barangay: '',
-      location: '',
       installationAddress: '',
       coordinates: '',
       landmark: '',
@@ -976,30 +965,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           </select>
         </div>
 
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="location" style={{ color: getLabelColor() }}>
-            Location
-          </label>
-          <select
-            id="location"
-            name="location"
-            value={formData.location}
-            onChange={handleInputChange}
-            disabled={!formData.barangay}
-            title="Please select your location"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-            style={{
-              borderColor: getBorderColor(),
-              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-              color: getTextColor()
-            }}
-          >
-            <option value="">Select location</option>
-            {villages.map(village => (
-              <option key={village.id} value={village.village_code}>{village.village_name}</option>
-            ))}
-          </select>
-        </div>
+
 
         <div className="col-span-1 md:col-span-2 mb-4">
           <div className="flex justify-between items-center mb-2">
@@ -1099,21 +1065,25 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
             Referred By
           </label>
-          <input
-            type="text"
+          <select
             id="referredBy"
             name="referredBy"
             value={formData.referredBy}
             onChange={handleInputChange}
-            placeholder="Enter referrer name (optional)"
-            title="Enter the name of the person who referred you (optional)"
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{
               borderColor: getBorderColor(),
               backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
               color: getTextColor()
             }}
-          />
+          >
+            <option value="">None / Walk-in</option>
+            {referrers.map(referrer => (
+              <option key={referrer.id} value={referrer.name}>
+                {referrer.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </section>
@@ -1158,34 +1128,33 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           </select>
         </div>
 
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="promo" style={{ color: getLabelColor() }}>
-            Promo
-          </label>
-          <select
-            id="promo"
-            name="promo"
-            value={formData.promo}
-            onChange={handleInputChange}
-            title="Select a promo if available (optional)"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            style={{
-              borderColor: getBorderColor(),
-              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-              color: getTextColor()
-            }}
-          >
-            <option value="">None</option>
-            {promos.map(promo => (
-              <option key={promo.id} value={promo.name}>
-                {promo.name}
-              </option>
-            ))}
-          </select>
-          {promos.length === 0 && (
-            <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>No active promos available</small>
-          )}
-        </div>
+        {promos && promos.length > 0 && (
+          <div className="mb-4">
+            <label className="block font-medium mb-2" htmlFor="promo" style={{ color: getLabelColor() }}>
+              Promo
+            </label>
+            <select
+              id="promo"
+              name="promo"
+              value={formData.promo}
+              onChange={handleInputChange}
+              title="Select a promo if available (optional)"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                color: getTextColor()
+              }}
+            >
+              <option value="">None</option>
+              {promos.map(promo => (
+                <option key={promo.id} value={promo.name}>
+                  {promo.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Upload Documents</h3>

@@ -62,7 +62,7 @@ class ApplicationController extends Controller
             try {
                 $application = new Application();
                 
-                $application->timestamp = now();
+                $application->timestamp = now()->timezone('Asia/Manila');
                 $application->email_address = $request->email;
                 $application->mobile_number = $request->mobile;
                 $application->first_name = $request->firstName;

@@ -82,7 +82,7 @@ class ApplicationFormController extends Controller
             }
             
             $applicationData = [
-                'timestamp' => now(),
+                'timestamp' => now()->timezone('Asia/Manila'),
                 'email_address' => $request->email,
                 'mobile_number' => $request->mobile,
                 'first_name' => $request->firstName,

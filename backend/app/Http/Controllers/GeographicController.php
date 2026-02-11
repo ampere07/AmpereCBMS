@@ -192,4 +192,37 @@ class GeographicController extends Controller
             ], 500);
         }
     }
+
+    public function getReferrers()
+    {
+        try {
+            Log::info('=== GeographicController getReferrers START ===');
+            
+            $referrers = DB::table('users')
+                ->where('role_id', 4)
+                ->select('id', 'first_name', 'last_name')
+                ->get()
+                ->map(function ($user) {
+                    return [
+                        'id' => $user->id,
+                        'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
+                    ];
+                })
+                ->filter(function ($user) {
+                    return !empty($user['name']);
+                })
+                ->values();
+
+            Log::info('Referrers fetched', ['count' => $referrers->count()]);
+
+            return response()->json([
+                'success' => true,
+                'referrers' => $referrers
+            ]);
+        } catch (\Exception $e) {
+            Log::error('=== GeographicController getReferrers ERROR ===');
+            Log::error($e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
 }
