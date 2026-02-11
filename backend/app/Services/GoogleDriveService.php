@@ -2,352 +2,415 @@
 
 namespace App\Services;
 
-use Google\Client;
-use Google\Service\Drive;
-use Google\Service\Drive\DriveFile;
-use Google\Service\Drive\Permission;
+use Google\Client as GoogleClient;
+use Google\Service\Drive as GoogleDrive;
 use Illuminate\Support\Facades\Log;
-use App\Services\ImageResizeService;
+use App\Models\SettingsImageSize;
 
 class GoogleDriveService
 {
-    private $client;
-    private $driveService;
-    private $folderId;
+    private $service;
+    private $parentFolderId;
 
     public function __construct()
     {
-        $this->client = new Client();
-        $this->client->setApplicationName('AmpereCBMS');
-        $this->client->setScopes([Drive::DRIVE_FILE]);
-        $this->client->setAuthConfig([
+        $this->service = $this->initializeGoogleDriveService();
+        $this->parentFolderId = env('GOOGLE_DRIVE_FOLDER_ID');
+    }
+
+    private function getActiveImageSizePercentage()
+    {
+        try {
+            $activeSettings = SettingsImageSize::where('status', 'active')->first();
+            
+            if ($activeSettings && $activeSettings->image_size_value) {
+                Log::info('Retrieved active image size setting', [
+                    'size' => $activeSettings->image_size,
+                    'percentage' => $activeSettings->image_size_value
+                ]);
+                return $activeSettings->image_size_value;
+            }
+            
+            Log::info('No active image size setting found, using 100%');
+            return 100;
+        } catch (\Exception $e) {
+            Log::error('Error retrieving image size setting, defaulting to 100%', [
+                'error' => $e->getMessage()
+            ]);
+            return 100;
+        }
+    }
+
+    private function resizeImage($imageContent, $mimeType, $percentage)
+    {
+        if ($percentage >= 100) {
+            return $imageContent;
+        }
+
+        try {
+            $image = imagecreatefromstring($imageContent);
+            
+            if ($image === false) {
+                Log::warning('Failed to create image from string, uploading original');
+                return $imageContent;
+            }
+
+            $originalWidth = imagesx($image);
+            $originalHeight = imagesy($image);
+
+            $newWidth = round($originalWidth * ($percentage / 100));
+            $newHeight = round($originalHeight * ($percentage / 100));
+
+            $resizedImage = imagecreatetruecolor($newWidth, $newHeight);
+
+            if (strpos($mimeType, 'png') !== false) {
+                imagealphablending($resizedImage, false);
+                imagesavealpha($resizedImage, true);
+                $transparent = imagecolorallocatealpha($resizedImage, 255, 255, 255, 127);
+                imagefilledrectangle($resizedImage, 0, 0, $newWidth, $newHeight, $transparent);
+            }
+
+            imagecopyresampled(
+                $resizedImage,
+                $image,
+                0, 0, 0, 0,
+                $newWidth,
+                $newHeight,
+                $originalWidth,
+                $originalHeight
+            );
+
+            ob_start();
+            
+            if (strpos($mimeType, 'png') !== false) {
+                imagepng($resizedImage, null, 9);
+            } elseif (strpos($mimeType, 'gif') !== false) {
+                imagegif($resizedImage);
+            } else {
+                imagejpeg($resizedImage, null, 85);
+            }
+            
+            $resizedContent = ob_get_clean();
+
+            imagedestroy($image);
+            imagedestroy($resizedImage);
+
+            $originalSize = strlen($imageContent);
+            $resizedSize = strlen($resizedContent);
+            $reduction = round((($originalSize - $resizedSize) / $originalSize) * 100, 2);
+
+            Log::info('Image resized successfully', [
+                'original_dimensions' => "{$originalWidth}x{$originalHeight}",
+                'new_dimensions' => "{$newWidth}x{$newHeight}",
+                'percentage' => $percentage,
+                'original_size' => $originalSize,
+                'resized_size' => $resizedSize,
+                'size_reduction' => "{$reduction}%"
+            ]);
+
+            return $resizedContent;
+        } catch (\Exception $e) {
+            Log::error('Error resizing image, uploading original', [
+                'error' => $e->getMessage()
+            ]);
+            return $imageContent;
+        }
+    }
+
+    private function initializeGoogleDriveService()
+    {
+        $client = new GoogleClient();
+        
+        $credentials = [
             'type' => 'service_account',
-            'project_id' => config('services.google.project_id'),
-            'private_key_id' => config('services.google.private_key_id'),
-            'private_key' => config('services.google.private_key'),
-            'client_email' => config('services.google.client_email'),
-            'client_id' => config('services.google.client_id'),
+            'project_id' => env('GOOGLE_DRIVE_PROJECT_ID'),
+            'private_key_id' => env('GOOGLE_DRIVE_PRIVATE_KEY_ID'),
+            'private_key' => str_replace('\\n', "\n", env('GOOGLE_DRIVE_PRIVATE_KEY')),
+            'client_email' => env('GOOGLE_DRIVE_CLIENT_EMAIL'),
+            'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
             'auth_uri' => 'https://accounts.google.com/o/oauth2/auth',
             'token_uri' => 'https://oauth2.googleapis.com/token',
             'auth_provider_x509_cert_url' => 'https://www.googleapis.com/oauth2/v1/certs',
-        ]);
-
-        $this->driveService = new Drive($this->client);
-        $this->folderId = config('services.google.folder_id');
+            'client_x509_cert_url' => 'https://www.googleapis.com/robot/v1/metadata/x509/' . env('GOOGLE_DRIVE_CLIENT_EMAIL')
+        ];
+        
+        $client->setAuthConfig($credentials);
+        $client->addScope(GoogleDrive::DRIVE_FILE);
+        
+        return new GoogleDrive($client);
     }
 
-    public function uploadApplicationDocuments($fullName, $files)
+    public function getService()
+    {
+        return $this->service;
+    }
+
+    public function getParentFolderId()
+    {
+        return $this->parentFolderId;
+    }
+
+    public function findFolder($folderName, $parentFolderId = null)
     {
         try {
-            Log::info('=== STEP 2: STARTING GOOGLE DRIVE UPLOAD ===', [
-                'applicant' => $fullName,
-                'parent_folder_id' => $this->folderId,
-                'note' => 'All images have already been resized in Step 1'
-            ]);
-
-            $applicantFolderId = $this->createApplicantFolder($fullName);
+            $parentId = $parentFolderId ?? $this->parentFolderId;
             
-            if (!$applicantFolderId) {
-                throw new \Exception('Failed to create applicant folder');
-            }
-
-            Log::info('Applicant folder created in Google Drive', ['folder_id' => $applicantFolderId]);
-
-            $uploadedUrls = [];
-
-            $fieldMapping = [
-                'proofOfBilling' => 'proof_of_billing_url',
-                'governmentIdPrimary' => 'government_valid_id_url',
-                'governmentIdSecondary' => 'second_government_valid_id_url',
-                'houseFrontPicture' => 'house_front_picture_url',
-                'nearestLandmark1Image' => 'nearest_landmark1_url',
-                'nearestLandmark2Image' => 'nearest_landmark2_url',
-                'promoProof' => 'promo_url',
-            ];
-
-            foreach ($files as $fieldName => $filePath) {
-                if (empty($filePath) || !file_exists($filePath)) {
-                    Log::warning("File not found for {$fieldName}: {$filePath}");
-                    continue;
-                }
-
-                try {
-                    $dbFieldName = $fieldMapping[$fieldName] ?? null;
-                    if (!$dbFieldName) {
-                        Log::warning("No database field mapping for {$fieldName}");
-                        continue;
-                    }
-
-                    $fileId = $this->uploadFile($filePath, $applicantFolderId, $fieldName);
-                    if ($fileId) {
-                        $viewUrl = "https://drive.google.com/file/d/{$fileId}/view";
-                        $uploadedUrls[$dbFieldName] = $viewUrl;
-                        Log::info("Successfully uploaded to Google Drive: {$fieldName}", [
-                            'file_id' => $fileId,
-                            'url' => $viewUrl
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    Log::error("Failed to upload {$fieldName}: " . $e->getMessage());
-                }
-            }
-
-            Log::info('=== STEP 2 COMPLETED: ALL RESIZED IMAGES UPLOADED TO GOOGLE DRIVE ===', [
-                'applicant' => $fullName,
-                'folder_id' => $applicantFolderId,
-                'files_uploaded' => count($uploadedUrls)
+            $query = "name='{$folderName}' and mimeType='application/vnd.google-apps.folder' and '{$parentId}' in parents and trashed=false";
+            
+            $response = $this->service->files->listFiles([
+                'q' => $query,
+                'fields' => 'files(id, name)',
+                'supportsAllDrives' => true,
+                'includeItemsFromAllDrives' => true
             ]);
-
-            return $uploadedUrls;
-
+            
+            $files = $response->getFiles();
+            
+            if (count($files) > 0) {
+                Log::info('Found existing Google Drive folder', [
+                    'folder_name' => $folderName,
+                    'folder_id' => $files[0]->id,
+                    'parent_id' => $parentId
+                ]);
+                return $files[0]->id;
+            }
+            
+            return null;
         } catch (\Exception $e) {
-            Log::error('Google Drive upload error: ' . $e->getMessage());
-            throw $e;
+            Log::error('Failed to search for Google Drive folder', [
+                'folder_name' => $folderName,
+                'error' => $e->getMessage()
+            ]);
+            return null;
         }
     }
 
-    private function createApplicantFolder($fullName)
+    public function createFolder($folderName, $parentFolderId = null)
     {
         try {
-            Log::info('Creating applicant folder', [
-                'name' => $fullName,
-                'parent' => $this->folderId
-            ]);
-
-            $folderMetadata = new DriveFile([
-                'name' => $fullName,
+            $parentId = $parentFolderId ?? $this->parentFolderId;
+            
+            $existingFolderId = $this->findFolder($folderName, $parentId);
+            if ($existingFolderId) {
+                Log::info('Using existing Google Drive folder', [
+                    'folder_name' => $folderName,
+                    'folder_id' => $existingFolderId
+                ]);
+                return $existingFolderId;
+            }
+            
+            $fileMetadata = new GoogleDrive\DriveFile([
+                'name' => $folderName,
                 'mimeType' => 'application/vnd.google-apps.folder',
-                'parents' => [$this->folderId]
+                'parents' => [$parentId]
             ]);
-
-            $folder = $this->driveService->files->create($folderMetadata, [
+            
+            $folder = $this->service->files->create($fileMetadata, [
                 'fields' => 'id',
                 'supportsAllDrives' => true
             ]);
-
-            Log::info("Folder created successfully", [
+            
+            $this->makeFileViewable($folder->id);
+            
+            Log::info('Google Drive folder created', [
+                'folder_name' => $folderName,
                 'folder_id' => $folder->id,
-                'folder_name' => $fullName
+                'parent_id' => $parentId
             ]);
-
+            
             return $folder->id;
-
         } catch (\Exception $e) {
-            Log::error('Failed to create folder: ' . $e->getMessage());
+            Log::error('Failed to create Google Drive folder', [
+                'folder_name' => $folderName,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
     }
 
-    private function uploadFile($filePath, $folderId, $fieldName)
+    public function uploadFile($file, $folderId, $fileName, $mimeType = null)
     {
         try {
-            $fileName = $this->generateFileName($fieldName, $filePath);
-            $mimeType = mime_content_type($filePath);
-            $fileSize = filesize($filePath);
-            
-            $isImage = ImageResizeService::isImageFile($mimeType);
-            
-            if ($isImage) {
-                Log::info('Uploading RESIZED image to Google Drive', [
-                    'field' => $fieldName,
-                    'file_name' => $fileName,
-                    'folder_id' => $folderId,
-                    'mime_type' => $mimeType,
-                    'resized_file_size' => $fileSize . ' bytes',
-                    'note' => 'This image was already resized in Step 1 based on active settings from settings_image_size table'
-                ]);
-            } else {
-                Log::info('Uploading file to Google Drive', [
-                    'field' => $fieldName,
-                    'file_name' => $fileName,
-                    'folder_id' => $folderId,
-                    'mime_type' => $mimeType,
-                    'file_size' => $fileSize . ' bytes',
-                    'note' => 'PDF file - no resizing applied'
-                ]);
-            }
-
-            $fileMetadata = new DriveFile([
+            $fileMetadata = new GoogleDrive\DriveFile([
                 'name' => $fileName,
                 'parents' => [$folderId]
             ]);
+            
+            if (is_string($file)) {
+                $content = file_get_contents($file);
+                $detectedMimeType = $mimeType ?? mime_content_type($file);
+            } else {
+                $content = file_get_contents($file->getRealPath());
+                $detectedMimeType = $mimeType ?? $file->getMimeType();
+            }
 
-            $content = file_get_contents($filePath);
-
-            $file = $this->driveService->files->create($fileMetadata, [
+            if ($this->isImageMimeType($detectedMimeType)) {
+                $percentage = $this->getActiveImageSizePercentage();
+                $content = $this->resizeImage($content, $detectedMimeType, $percentage);
+            }
+            
+            $uploadedFile = $this->service->files->create($fileMetadata, [
                 'data' => $content,
-                'mimeType' => $mimeType,
+                'mimeType' => $detectedMimeType,
                 'uploadType' => 'multipart',
                 'fields' => 'id',
                 'supportsAllDrives' => true
             ]);
-
-            $this->makeFileViewable($file->id);
-
-            return $file->id;
-
+            
+            $this->makeFileViewable($uploadedFile->id);
+            
+            $fileUrl = 'https://drive.google.com/file/d/' . $uploadedFile->id . '/view';
+            
+            Log::info('File uploaded to Google Drive', [
+                'file_name' => $fileName,
+                'file_id' => $uploadedFile->id,
+                'folder_id' => $folderId,
+                'url' => $fileUrl
+            ]);
+            
+            return $fileUrl;
         } catch (\Exception $e) {
-            Log::error('Failed to upload file: ' . $e->getMessage());
+            Log::error('Failed to upload file to Google Drive', [
+                'file_name' => $fileName,
+                'folder_id' => $folderId,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
+    }
+
+    private function isImageMimeType($mimeType)
+    {
+        $imageMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        return in_array($mimeType, $imageMimeTypes);
     }
 
     private function makeFileViewable($fileId)
     {
         try {
-            $permission = new Permission([
+            $permission = new GoogleDrive\Permission([
                 'type' => 'anyone',
                 'role' => 'reader'
             ]);
 
-            $this->driveService->permissions->create($fileId, $permission, [
+            $this->service->permissions->create($fileId, $permission, [
                 'supportsAllDrives' => true
             ]);
             
             Log::info("Set file {$fileId} to viewable by anyone with link");
 
         } catch (\Exception $e) {
-            Log::error('Failed to set file permissions: ' . $e->getMessage());
+            Log::warning('Could not set file permissions (may inherit from parent): ' . $e->getMessage());
         }
     }
 
-    private function generateFileName($fieldName, $filePath)
-    {
-        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
-        
-        $nameMap = [
-            'proofOfBilling' => 'Proof_of_Billing',
-            'governmentIdPrimary' => 'Government_ID_Primary',
-            'governmentIdSecondary' => 'Government_ID_Secondary',
-            'houseFrontPicture' => 'House_Front_Picture',
-            'nearestLandmark1Image' => 'Nearest_Landmark_1',
-            'nearestLandmark2Image' => 'Nearest_Landmark_2',
-            'promoProof' => 'Promo_Proof',
-        ];
-
-        $documentType = $nameMap[$fieldName] ?? $fieldName;
-        
-        return $documentType . '.' . $extension;
-    }
-
-    public function uploadFormLogo($filePath, $brandName = null)
+    public function deleteFile($fileId)
     {
         try {
-            $folderName = $brandName ? "Logo - {$brandName}" : "Logo";
-            
-            Log::info('Starting form logo upload', [
-                'folder_name' => $folderName,
-                'parent_folder_id' => $this->folderId
-            ]);
-
-            $logoFolderId = $this->findOrCreateFolder($folderName);
-            
-            if (!$logoFolderId) {
-                throw new \Exception('Failed to create or find logo folder');
-            }
-
-            Log::info('Logo folder ready', ['folder_id' => $logoFolderId]);
-
-            $fileName = 'logo_' . time() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
-            $mimeType = mime_content_type($filePath);
-            $fileSize = filesize($filePath);
-            
-            $isImage = ImageResizeService::isImageFile($mimeType);
-            
-            if ($isImage) {
-                Log::info('Uploading resized logo image to Google Drive', [
-                    'name' => $fileName,
-                    'folder_id' => $logoFolderId,
-                    'mime' => $mimeType,
-                    'size' => $fileSize,
-                    'note' => 'Logo was resized based on active settings before upload'
-                ]);
-            } else {
-                Log::info('Uploading logo file', [
-                    'name' => $fileName,
-                    'folder_id' => $logoFolderId,
-                    'mime' => $mimeType,
-                    'size' => $fileSize
-                ]);
-            }
-
-            $fileMetadata = new DriveFile([
-                'name' => $fileName,
-                'parents' => [$logoFolderId]
-            ]);
-
-            $content = file_get_contents($filePath);
-
-            $file = $this->driveService->files->create($fileMetadata, [
-                'data' => $content,
-                'mimeType' => $mimeType,
-                'uploadType' => 'multipart',
-                'fields' => 'id',
+            $this->service->files->delete($fileId, [
                 'supportsAllDrives' => true
             ]);
-
-            $this->makeFileViewable($file->id);
-
-            $viewUrl = "https://drive.google.com/file/d/{$file->id}/view";
             
-            Log::info('Logo uploaded successfully', [
-                'file_id' => $file->id,
-                'url' => $viewUrl
+            Log::info('File deleted from Google Drive', [
+                'file_id' => $fileId
             ]);
-
-            return $viewUrl;
-
+            
+            return true;
         } catch (\Exception $e) {
-            Log::error('Failed to upload logo: ' . $e->getMessage());
+            Log::error('Failed to delete file from Google Drive', [
+                'file_id' => $fileId,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
     }
 
-    private function findOrCreateFolder($folderName)
+    public function getFileMetadata($fileId)
     {
         try {
-            $query = "name = '{$folderName}' and mimeType = 'application/vnd.google-apps.folder' and '{$this->folderId}' in parents and trashed = false";
+            $file = $this->service->files->get($fileId, [
+                'fields' => 'id, name, mimeType, size, createdTime, modifiedTime',
+                'supportsAllDrives' => true
+            ]);
             
-            $response = $this->driveService->files->listFiles([
-                'q' => $query,
-                'fields' => 'files(id, name)',
+            return $file;
+        } catch (\Exception $e) {
+            Log::error('Failed to get file metadata from Google Drive', [
+                'file_id' => $fileId,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    public function listFilesInFolder($folderId)
+    {
+        try {
+            $response = $this->service->files->listFiles([
+                'q' => "'{$folderId}' in parents and trashed=false",
+                'fields' => 'files(id, name, mimeType, size, createdTime, modifiedTime)',
                 'supportsAllDrives' => true,
                 'includeItemsFromAllDrives' => true
             ]);
-
-            if (count($response->files) > 0) {
-                Log::info('Found existing folder', [
-                    'folder_name' => $folderName,
-                    'folder_id' => $response->files[0]->id
-                ]);
-                return $response->files[0]->id;
-            }
-
-            Log::info('Creating new folder', [
-                'name' => $folderName,
-                'parent' => $this->folderId
+            
+            return $response->getFiles();
+        } catch (\Exception $e) {
+            Log::error('Failed to list files in Google Drive folder', [
+                'folder_id' => $folderId,
+                'error' => $e->getMessage()
             ]);
+            throw $e;
+        }
+    }
 
-            $folderMetadata = new DriveFile([
-                'name' => $folderName,
-                'mimeType' => 'application/vnd.google-apps.folder',
-                'parents' => [$this->folderId]
-            ]);
-
-            $folder = $this->driveService->files->create($folderMetadata, [
-                'fields' => 'id',
+    public function moveFile($fileId, $newFolderId)
+    {
+        try {
+            $file = $this->service->files->get($fileId, [
+                'fields' => 'parents',
                 'supportsAllDrives' => true
             ]);
-
-            Log::info('Folder created successfully', [
-                'folder_id' => $folder->id,
-                'folder_name' => $folderName
+            $previousParents = implode(',', $file->parents);
+            
+            $file = $this->service->files->update($fileId, new GoogleDrive\DriveFile(), [
+                'addParents' => $newFolderId,
+                'removeParents' => $previousParents,
+                'fields' => 'id, parents',
+                'supportsAllDrives' => true
             ]);
-
-            return $folder->id;
-
+            
+            Log::info('File moved in Google Drive', [
+                'file_id' => $fileId,
+                'new_folder_id' => $newFolderId
+            ]);
+            
+            return true;
         } catch (\Exception $e) {
-            Log::error('Failed to find or create folder: ' . $e->getMessage());
+            Log::error('Failed to move file in Google Drive', [
+                'file_id' => $fileId,
+                'new_folder_id' => $newFolderId,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    public function searchFiles($query)
+    {
+        try {
+            $response = $this->service->files->listFiles([
+                'q' => $query,
+                'fields' => 'files(id, name, mimeType, size, createdTime, modifiedTime)',
+                'supportsAllDrives' => true,
+                'includeItemsFromAllDrives' => true
+            ]);
+            
+            return $response->getFiles();
+        } catch (\Exception $e) {
+            Log::error('Failed to search files in Google Drive', [
+                'query' => $query,
+                'error' => $e->getMessage()
+            ]);
             throw $e;
         }
     }

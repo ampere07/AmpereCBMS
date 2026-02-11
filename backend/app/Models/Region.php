@@ -2,20 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Region extends Model
 {
-    protected $table = 'region';
-    public $timestamps = false;
+    use HasFactory;
 
+    protected $table = 'region';
+    
+    public $timestamps = false;
+    
     protected $fillable = [
-        'region_code',
-        'region_name',
+        'region'
     ];
 
     public function cities()
     {
-        return $this->hasMany(City::class, 'region_code', 'region_code');
+        return $this->hasMany(City::class, 'region_id');
     }
 }

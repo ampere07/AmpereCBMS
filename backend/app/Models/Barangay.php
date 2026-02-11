@@ -2,21 +2,29 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Barangay extends Model
 {
-    protected $table = 'barangay';
-    public $timestamps = false;
+    use HasFactory;
 
+    protected $table = 'barangay';
+    
+    public $timestamps = false;
+    
     protected $fillable = [
-        'barangay_code',
-        'barangay_name',
-        'city_code',
+        'barangay',
+        'city_id'
     ];
 
     public function city()
     {
-        return $this->belongsTo(City::class, 'city_code', 'city_code');
+        return $this->belongsTo(City::class, 'city_id');
+    }
+
+    public function locations()
+    {
+        return $this->hasMany(LocationDetail::class, 'barangay_id');
     }
 }

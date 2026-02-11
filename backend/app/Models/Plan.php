@@ -2,11 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Plan extends Model
 {
+    use HasFactory;
+
     protected $table = 'plan_list';
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -20,5 +24,11 @@ class Plan extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'modified_date' => 'datetime',
     ];
+
+    public function billingAccounts()
+    {
+        return $this->hasMany(BillingAccount::class);
+    }
 }
