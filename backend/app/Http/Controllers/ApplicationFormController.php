@@ -36,8 +36,7 @@ class ApplicationFormController extends Controller
                 'referredBy' => 'nullable|string|max:255',
                 'plan' => 'required|string|max:255',
                 'promo' => 'nullable|string|max:255',
-                'nearestLandmark1Image' => 'required|file|mimes:jpeg,jpg,png|max:2048',
-                'nearestLandmark2Image' => 'required|file|mimes:jpeg,jpg,png|max:2048',
+
                 'proofOfBilling' => 'required|file|mimes:jpeg,jpg,png,pdf|max:2048',
                 'governmentIdPrimary' => 'required|file|mimes:jpeg,jpg,png,pdf|max:2048',
                 'governmentIdSecondary' => 'nullable|file|mimes:jpeg,jpg,png,pdf|max:2048',
@@ -138,8 +137,7 @@ class ApplicationFormController extends Controller
             'governmentIdPrimary' => 'governmentIdPrimary',
             'governmentIdSecondary' => 'governmentIdSecondary',
             'houseFrontPicture' => 'houseFrontPicture',
-            'nearestLandmark1Image' => 'nearestLandmark1Image',
-            'nearestLandmark2Image' => 'nearestLandmark2Image',
+
             'promoProof' => 'promoProof',
         ];
 

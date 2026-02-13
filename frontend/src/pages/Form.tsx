@@ -44,8 +44,7 @@ interface FormState {
   installationAddress: string;
   coordinates: string;
   landmark: string;
-  nearestLandmark1Image: File | null;
-  nearestLandmark2Image: File | null;
+
   referredBy: string;
   plan: string;
   promo: string;
@@ -337,8 +336,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     installationAddress: '',
     coordinates: '',
     landmark: '',
-    nearestLandmark1Image: null,
-    nearestLandmark2Image: null,
+
     referredBy: '',
     plan: '',
     promo: '',
@@ -533,13 +531,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     if (requireFields) {
       const missingImages = [];
 
-      if (!formData.nearestLandmark1Image) {
-        missingImages.push('Nearest Landmark #1 Image');
-      }
 
-      if (!formData.nearestLandmark2Image) {
-        missingImages.push('Nearest Landmark #2 Image');
-      }
 
       if (!formData.proofOfBilling) {
         missingImages.push('Proof of Billing');
@@ -605,13 +597,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       submissionData.append('houseFrontPicture', formData.houseFrontPicture);
     }
 
-    if (formData.nearestLandmark1Image) {
-      submissionData.append('nearestLandmark1Image', formData.nearestLandmark1Image);
-    }
 
-    if (formData.nearestLandmark2Image) {
-      submissionData.append('nearestLandmark2Image', formData.nearestLandmark2Image);
-    }
 
     if (formData.promoProof) {
       submissionData.append('promoProof', formData.promoProof);
@@ -711,8 +697,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       installationAddress: '',
       coordinates: '',
       landmark: '',
-      nearestLandmark1Image: null,
-      nearestLandmark2Image: null,
+
       referredBy: '',
       plan: '',
       promo: '',
@@ -1311,31 +1296,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   />
                 </div>
 
-                <CameraFileInput
-                  label="Nearest Landmark #1 Image"
-                  name="nearestLandmark1Image"
-                  required={requireFields}
-                  accept="image/*,application/pdf"
-                  value={formData.nearestLandmark1Image}
-                  onChange={(file) => handleFileChange('nearestLandmark1Image', file)}
-                  labelColor="#374151"
-                  borderColor="#E5E7EB"
-                  backgroundColor="#FFFFFF"
-                  textColor="#1F2937"
-                />
 
-                <CameraFileInput
-                  label="Nearest Landmark #2 Image"
-                  name="nearestLandmark2Image"
-                  required={requireFields}
-                  accept="image/*,application/pdf"
-                  value={formData.nearestLandmark2Image}
-                  onChange={(file) => handleFileChange('nearestLandmark2Image', file)}
-                  labelColor="#374151"
-                  borderColor="#E5E7EB"
-                  backgroundColor="#FFFFFF"
-                  textColor="#1F2937"
-                />
 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>

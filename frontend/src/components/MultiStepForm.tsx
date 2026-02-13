@@ -55,8 +55,7 @@ interface FormState {
   installationAddress: string;
   coordinates: string;
   landmark: string;
-  nearestLandmark1Image: File | null;
-  nearestLandmark2Image: File | null;
+
   referredBy: string;
   plan: string;
   promo: string;
@@ -322,8 +321,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     installationAddress: '',
     coordinates: '',
     landmark: '',
-    nearestLandmark1Image: null,
-    nearestLandmark2Image: null,
+
     referredBy: '',
     plan: '',
     promo: '',
@@ -510,8 +508,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         if (!formData.barangay) missing.push('Barangay');
         if (!formData.installationAddress) missing.push('Installation Address');
         if (!formData.landmark) missing.push('Landmark');
-        if (!formData.nearestLandmark1Image) missing.push('Nearest Landmark #1 Image');
-        if (!formData.nearestLandmark2Image) missing.push('Nearest Landmark #2 Image');
+
         break;
       case 3:
         if (!formData.plan) missing.push('Plan');
@@ -583,8 +580,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     if (formData.governmentIdPrimary) submissionData.append('governmentIdPrimary', formData.governmentIdPrimary);
     if (formData.governmentIdSecondary) submissionData.append('governmentIdSecondary', formData.governmentIdSecondary);
     if (formData.houseFrontPicture) submissionData.append('houseFrontPicture', formData.houseFrontPicture);
-    if (formData.nearestLandmark1Image) submissionData.append('nearestLandmark1Image', formData.nearestLandmark1Image);
-    if (formData.nearestLandmark2Image) submissionData.append('nearestLandmark2Image', formData.nearestLandmark2Image);
+
     if (formData.promoProof) submissionData.append('promoProof', formData.promoProof);
 
     try {
@@ -678,8 +674,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       installationAddress: '',
       coordinates: '',
       landmark: '',
-      nearestLandmark1Image: null,
-      nearestLandmark2Image: null,
+
       referredBy: '',
       plan: '',
       promo: '',
@@ -1035,31 +1030,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           />
         </div>
 
-        <CameraFileInput
-          label="Nearest Landmark #1 Image"
-          name="nearestLandmark1Image"
-          required={requireFields}
-          accept="image/*,application/pdf"
-          value={formData.nearestLandmark1Image}
-          onChange={(file) => handleFileChange('nearestLandmark1Image', file)}
-          labelColor={getLabelColor()}
-          borderColor={getBorderColor()}
-          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
-          textColor={getTextColor()}
-        />
 
-        <CameraFileInput
-          label="Nearest Landmark #2 Image"
-          name="nearestLandmark2Image"
-          required={requireFields}
-          accept="image/*,application/pdf"
-          value={formData.nearestLandmark2Image}
-          onChange={(file) => handleFileChange('nearestLandmark2Image', file)}
-          labelColor={getLabelColor()}
-          borderColor={getBorderColor()}
-          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
-          textColor={getTextColor()}
-        />
 
         <div className="mb-4">
           <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
