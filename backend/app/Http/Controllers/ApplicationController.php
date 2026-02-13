@@ -3,285 +3,215 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\ImageQueue;
+use App\Models\Plan;
+use App\Models\PromoList;
+use App\Services\ImageResizeService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 
 class ApplicationController extends Controller
 {
-    public function index(Request $request)
-    {
-        try {
-            $page = $request->input('page', 1);
-            $limit = $request->input('limit', 50); // Default 50 for faster response
-            $search = $request->input('search', '');
-            $fastMode = $request->input('fast', false); // Fast mode: skip heavy processing
-
-            Log::info('ApplicationController: Starting to fetch applications', [
-                'page' => $page,
-                'limit' => $limit,
-                'search' => $search,
-                'fast_mode' => $fastMode
-            ]);
-
-            $query = Application::orderBy('id', 'desc');
-
-            // Apply search filter
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('first_name', 'LIKE', "%{$search}%")
-                      ->orWhere('last_name', 'LIKE', "%{$search}%")
-                      ->orWhere('email_address', 'LIKE', "%{$search}%")
-                      ->orWhere('mobile_number', 'LIKE', "%{$search}%")
-                      ->orWhere('installation_address', 'LIKE', "%{$search}%")
-                      ->orWhere('city', 'LIKE', "%{$search}%");
-                });
-            }
-
-            // Fetch one extra record to check if there are more pages (more efficient than COUNT)
-            $applications = $query->skip(($page - 1) * $limit)
-                ->take($limit + 1) // Fetch one extra
-                ->get();
-
-            // Check if there are more pages
-            $hasMore = $applications->count() > $limit;
-
-            // Remove the extra record if it exists
-            if ($hasMore) {
-                $applications = $applications->slice(0, $limit);
-            }
-
-            Log::info('ApplicationController: Fetched ' . $applications->count() . ' applications');
-
-            // Fast mode: Return minimal data immediately
-            if ($fastMode) {
-                $formattedApplications = $applications->map(function ($app) {
-                    return [
-                        'id' => (string)$app->id,
-                        'customer_name' => $this->getFullName($app),
-                        'timestamp' => $app->timestamp ? $app->timestamp->format('Y-m-d H:i:s') : null,
-                        'status' => $app->status ?? 'pending',
-                        'first_name' => $app->first_name,
-                        'last_name' => $app->last_name,
-                        'city' => $app->city,
-                        'create_date' => $app->timestamp ? $app->timestamp->format('Y-m-d') : null,
-                        'create_time' => $app->timestamp ? $app->timestamp->format('H:i:s') : null
-                    ];
-                });
-
-                return response()->json([
-                    'success' => true,
-                    'applications' => $formattedApplications->values(),
-                    'pagination' => [
-                        'current_page' => (int) $page,
-                        'per_page' => (int) $limit,
-                        'has_more' => $hasMore
-                    ]
-                ]);
-            }
-
-            // Normal mode: Return full data
-            $formattedApplications = $applications->map(function ($app) {
-                return [
-                    'id' => (string)$app->id,
-                    'customer_name' => $this->getFullName($app),
-                    'timestamp' => $app->timestamp ? $app->timestamp->format('Y-m-d H:i:s') : null,
-                    'address' => $app->installation_address ?? '',
-                    'address_line' => $app->installation_address ?? '',
-                    'status' => $app->status ?? 'pending',
-                    'email_address' => $app->email_address,
-                    'first_name' => $app->first_name,
-                    'middle_initial' => $app->middle_initial,
-                    'last_name' => $app->last_name,
-                    'mobile_number' => $app->mobile_number,
-                    'secondary_mobile_number' => $app->secondary_mobile_number,
-                    'installation_address' => $app->installation_address,
-                    'landmark' => $app->landmark,
-                    'region' => $app->region,
-                    'city' => $app->city,
-                    'barangay' => $app->barangay,
-                    'location' => $app->location,
-                    'desired_plan' => $app->desired_plan,
-                    'promo' => $app->promo,
-                    'referrer_account_id' => $app->referrer_account_id,
-                    'referred_by' => $app->referred_by,
-                    'proof_of_billing_url' => $app->proof_of_billing_url,
-                    'government_valid_id_url' => $app->government_valid_id_url,
-                    'secondary_government_valid_id_url' => $app->secondary_government_valid_id_url,
-                    'house_front_picture_url' => $app->house_front_picture_url,
-                    'promo_url' => $app->promo_url,
-                    'nearest_landmark1_url' => $app->nearest_landmark1_url,
-                    'nearest_landmark2_url' => $app->nearest_landmark2_url,
-                    'document_attachment_url' => $app->document_attachment_url,
-                    'other_isp_bill_url' => $app->other_isp_bill_url,
-                    'terms_agreed' => $app->terms_agreed,
-                    'created_at' => $app->created_at ? $app->created_at->format('Y-m-d H:i:s') : null,
-                    'updated_at' => $app->updated_at ? $app->updated_at->format('Y-m-d H:i:s') : null,
-                    'created_by_user_id' => $app->created_by_user_id,
-                    'updated_by' => $app->updated_by,
-                    
-                    'create_date' => $app->timestamp ? $app->timestamp->format('Y-m-d') : null,
-                    'create_time' => $app->timestamp ? $app->timestamp->format('H:i:s') : null
-                ];
-            });
-            
-            return response()->json([
-                'success' => true,
-                'applications' => $formattedApplications->values(),
-                'pagination' => [
-                    'current_page' => (int) $page,
-                    'per_page' => (int) $limit,
-                    'has_more' => $hasMore
-                ]
-            ]);
-        } catch (\Exception $e) {
-            Log::error('ApplicationController error: ' . $e->getMessage());
-            Log::error('ApplicationController trace: ' . $e->getTraceAsString());
-            
-            return response()->json([
-                'error' => $e->getMessage(),
-                'message' => 'Failed to fetch applications from database',
-                'success' => false
-            ], 500);
-        }
-    }
-    
-    private function getFullName($app)
-    {
-        $parts = array_filter([
-            $app->first_name ?? '',
-            $app->middle_initial ?? '',
-            $app->last_name ?? ''
-        ]);
-        
-        return implode(' ', $parts) ?: 'Unknown';
-    }
-    
-    private function getLocationName($region, $city)
-    {
-        try {
-            $locationParts = array_filter([$region, $city]);
-            return implode(', ', $locationParts) ?: 'Unknown Location';
-        } catch (\Exception $e) {
-            Log::error('Failed to get location name: ' . $e->getMessage());
-            return 'Unknown Location';
-        }
-    }
-
-    private function broadcastNewApplication($application)
-    {
-        try {
-            $data = [
-                'id' => $application->id,
-                'type' => 'application',
-                'customer_name' => $this->getFullName($application),
-                'plan_name' => $application->desired_plan ?? 'Unknown',
-                'status' => $application->status ?? 'pending',
-                'title' => '🔔 New Application',
-                'message' => 'A new customer application has been received',
-                'timestamp' => now()->timestamp,
-                'formatted_date' => now()->format('Y-m-d h:i:s A') // e.g. 2026-02-11 05:53:42 PM
-            ];
-
-            Http::timeout(2)->post('http://127.0.0.1:3001/broadcast/new-application', $data);
-        } catch (\Exception $e) {
-            Log::warning('Failed to broadcast new application to socket server', [
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
     public function store(Request $request)
     {
         try {
-            $validatedData = $request->validate([
-                'email_address' => 'required|email',
-                'first_name' => 'required|string|max:255',
-                'middle_initial' => 'nullable|string|max:1',
-                'last_name' => 'required|string|max:255',
-                'mobile_number' => 'required|string|max:50',
-                'secondary_mobile_number' => 'nullable|string|max:50',
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email|max:255',
+                'mobile' => 'required|string|regex:/^09[0-9]{9}$/',
+                'firstName' => 'required|string|max:255',
+                'lastName' => 'required|string|max:255',
+                'middleInitial' => 'nullable|string|max:1',
+                'secondaryMobile' => 'nullable|string|regex:/^09[0-9]{9}$/',
                 'region' => 'required|string|max:255',
                 'city' => 'required|string|max:255',
-                'barangay' => 'nullable|string|max:255',
-                'installation_address' => 'required',
-                'landmark' => 'nullable',
-                'referred_by' => 'nullable|string|max:255',
-                'desired_plan' => 'nullable|string|max:255',
+                'barangay' => 'required|string|max:255',
+                'location' => 'nullable|string|max:255',
+                'installationAddress' => 'required|string',
+                'coordinates' => 'nullable|string|max:255',
+                'landmark' => 'required|string|max:255',
+                'referredBy' => 'nullable|string|max:255',
+                'plan' => 'required|string|max:255',
                 'promo' => 'nullable|string|max:255',
-                'proof_of_billing_url' => 'nullable|string|max:255',
-                'government_valid_id_url' => 'nullable|string|max:255',
-                'secondary_government_valid_id_url' => 'nullable|string|max:255',
-                'house_front_picture_url' => 'nullable|string|max:255',
-                'promo_url' => 'nullable|string|max:255',
-                'nearest_landmark1_url' => 'nullable|string|max:255',
-                'nearest_landmark2_url' => 'nullable|string|max:255',
-                'document_attachment_url' => 'nullable|string|max:255',
-                'other_isp_bill_url' => 'nullable|string|max:255',
-                'terms_agreed' => 'nullable|boolean',
-                'status' => 'nullable|string|max:100'
+                'proofOfBilling' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'governmentIdSecondary' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+                'nearestLandmark1Image' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+                'nearestLandmark2Image' => 'required|file|mimes:jpg,jpeg,png|max:10240',
+                'promoProof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
             ]);
 
-            $validatedData['timestamp'] = now();
-            $validatedData['created_by_user_id'] = auth()->id();
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
-            $application = Application::create($validatedData);
+            $fullName = trim($request->firstName . ' ' . ($request->middleInitial ? $request->middleInitial . '. ' : '') . $request->lastName);
 
-            $this->broadcastNewApplication($application);
+            Log::info('=== APPLICATION FORM SUBMITTED ===', [
+                'applicant' => $fullName,
+                'email' => $request->email
+            ]);
 
-            $formattedApplication = [
-                'id' => (string)$application->id,
-                'customer_name' => $this->getFullName($application),
-                'timestamp' => $application->timestamp ? $application->timestamp->format('Y-m-d H:i:s') : null,
-                'address' => $application->installation_address ?? '',
-                'status' => $application->status ?? 'pending',
-                'location' => $this->getLocationName($application->region ?? '', $application->city ?? ''),
-                'email_address' => $application->email_address,
-                'first_name' => $application->first_name,
-                'middle_initial' => $application->middle_initial,
-                'last_name' => $application->last_name,
-                'mobile_number' => $application->mobile_number,
-                'secondary_mobile_number' => $application->secondary_mobile_number,
-                'installation_address' => $application->installation_address,
-                'landmark' => $application->landmark,
-                'region' => $application->region,
-                'city' => $application->city,
-                'barangay' => $application->barangay,
-                'desired_plan' => $application->desired_plan,
-                'promo' => $application->promo,
-                'referred_by' => $application->referred_by,
-                'proof_of_billing_url' => $application->proof_of_billing_url,
-                'government_valid_id_url' => $application->government_valid_id_url,
-                'secondary_government_valid_id_url' => $application->secondary_government_valid_id_url,
-                'house_front_picture_url' => $application->house_front_picture_url,
-                'promo_url' => $application->promo_url,
-                'nearest_landmark1_url' => $application->nearest_landmark1_url,
-                'nearest_landmark2_url' => $application->nearest_landmark2_url,
-                'document_attachment_url' => $application->document_attachment_url,
-                'other_isp_bill_url' => $application->other_isp_bill_url,
-                'terms_agreed' => $application->terms_agreed,
-            ];
+            DB::beginTransaction();
 
-            return response()->json([
-                'message' => 'Application created successfully',
-                'application' => $formattedApplication,
-                'success' => true
-            ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('ApplicationController store validation error: ' . json_encode($e->errors()));
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-                'success' => false
-            ], 422);
+            try {
+                $application = new Application();
+                
+                $application->timestamp = now()->timezone('Asia/Manila');
+                $application->email_address = $request->email;
+                $application->mobile_number = $request->mobile;
+                $application->first_name = $request->firstName;
+                $application->last_name = $request->lastName;
+                $application->middle_initial = $request->middleInitial;
+                $application->secondary_mobile_number = $request->secondaryMobile;
+                $application->region = $request->region;
+                $application->city = $request->city;
+                $application->barangay = $request->barangay;
+                $application->location = $request->location;
+                $application->installation_address = $request->installationAddress;
+                $application->long_lat = $request->coordinates;
+                $application->landmark = $request->landmark;
+                $application->referred_by = $request->referredBy;
+                
+                $plan = Plan::find($request->plan);
+                if ($plan) {
+                    $application->desired_plan = $plan->plan_name . ' - ₱' . number_format($plan->price, 2);
+                } else {
+                    $application->desired_plan = $request->plan;
+                }
+                
+                if ($request->promo && $request->promo !== '') {
+                    $application->promo = $request->promo;
+                } else {
+                    $application->promo = 'None';
+                }
+                
+                $application->terms_agreed = true;
+                $application->status = 'pending';
+                
+                $application->proof_of_billing_url = 'processing';
+                $application->government_valid_id_url = 'processing';
+                $application->house_front_picture_url = 'processing';
+                $application->nearest_landmark1_url = 'processing';
+                $application->nearest_landmark2_url = 'processing';
+
+                $application->save();
+
+                Log::info('Application record created', ['application_id' => $application->id]);
+
+                $imagePath = public_path('storage/images');
+                if (!file_exists($imagePath)) {
+                    mkdir($imagePath, 0755, true);
+                    Log::info('Created images directory', ['path' => $imagePath]);
+                }
+
+                $imageFieldMapping = [
+                    'proofOfBilling' => 'proof_of_billing_url',
+                    'governmentIdPrimary' => 'government_valid_id_url',
+                    'governmentIdSecondary' => 'second_government_valid_id_url',
+                    'houseFrontPicture' => 'house_front_picture_url',
+                    'nearestLandmark1Image' => 'nearest_landmark1_url',
+                    'nearestLandmark2Image' => 'nearest_landmark2_url',
+                    'promoProof' => 'promo_url',
+                ];
+
+                foreach ($imageFieldMapping as $requestKey => $dbField) {
+                    if ($request->hasFile($requestKey)) {
+                        try {
+                            $file = $request->file($requestKey);
+                            $originalName = $file->getClientOriginalName();
+                            $fileName = $application->id . '_' . $dbField . '_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                            $localPath = $imagePath . '/' . $fileName;
+                            
+                            $file->move($imagePath, $fileName);
+                            
+                            Log::info("Saved image to local storage", [
+                                'field' => $dbField,
+                                'file_name' => $fileName,
+                                'path' => $localPath
+                            ]);
+
+                            ImageQueue::create([
+                                'application_id' => $application->id,
+                                'field_name' => $dbField,
+                                'local_path' => $localPath,
+                                'original_filename' => $originalName,
+                                'status' => 'pending',
+                            ]);
+
+                            Log::info("Added to image queue", ['field' => $dbField, 'application_id' => $application->id]);
+
+                        } catch (\Exception $e) {
+                            Log::error("Failed to save image locally: {$requestKey}", [
+                                'error' => $e->getMessage(),
+                                'application_id' => $application->id
+                            ]);
+                            throw $e;
+                        }
+                    }
+                }
+
+                DB::commit();
+
+                Log::info('Application submitted successfully with queued images', [
+                    'application_id' => $application->id,
+                    'email' => $application->email_address,
+                    'queued_images' => ImageQueue::where('application_id', $application->id)->count()
+                ]);
+
+                return response()->json([
+                    'message' => 'Application submitted successfully. Images will be processed shortly.',
+                    'application' => $application
+                ], 201);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+
         } catch (\Exception $e) {
-            Log::error('ApplicationController store error: ' . $e->getMessage());
-            Log::error('ApplicationController store trace: ' . $e->getTraceAsString());
+            Log::error('Application submission failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to submit application',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function index(Request $request)
+    {
+        try {
+            $status = $request->query('status');
+            
+            $query = Application::query();
+            
+            if ($status) {
+                $query->where('status', $status);
+            }
+            
+            $applications = $query->orderBy('created_at', 'desc')->get();
             
             return response()->json([
-                'message' => 'Failed to create application',
-                'error' => $e->getMessage(),
-                'success' => false
+                'applications' => $applications
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve applications', [
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'message' => 'Failed to retrieve applications',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -289,126 +219,57 @@ class ApplicationController extends Controller
     public function show($id)
     {
         try {
-            Log::info('ApplicationController show: Fetching application ID: ' . $id);
-            
             $application = Application::findOrFail($id);
             
-            $formattedApplication = [
-                'id' => (string)$application->id,
-                'customer_name' => $this->getFullName($application),
-                'timestamp' => $application->timestamp ? $application->timestamp->format('Y-m-d H:i:s') : null,
-                'address' => $application->installation_address ?? '',
-                'address_line' => $application->installation_address ?? '',
-                'status' => $application->status ?? 'pending',
-                'email_address' => $application->email_address,
-                'first_name' => $application->first_name,
-                'middle_initial' => $application->middle_initial,
-                'last_name' => $application->last_name,
-                'mobile_number' => $application->mobile_number,
-                'secondary_mobile_number' => $application->secondary_mobile_number,
-                'installation_address' => $application->installation_address,
-                'landmark' => $application->landmark,
-                'region' => $application->region,
-                'city' => $application->city,
-                'barangay' => $application->barangay,
-                'location' => $application->location,
-                'desired_plan' => $application->desired_plan,
-                'promo' => $application->promo,
-                'referrer_account_id' => $application->referrer_account_id,
-                'referred_by' => $application->referred_by,
-                'proof_of_billing_url' => $application->proof_of_billing_url,
-                'government_valid_id_url' => $application->government_valid_id_url,
-                'secondary_government_valid_id_url' => $application->secondary_government_valid_id_url,
-                'house_front_picture_url' => $application->house_front_picture_url,
-                'promo_url' => $application->promo_url,
-                'nearest_landmark1_url' => $application->nearest_landmark1_url,
-                'nearest_landmark2_url' => $application->nearest_landmark2_url,
-                'document_attachment_url' => $application->document_attachment_url,
-                'other_isp_bill_url' => $application->other_isp_bill_url,
-                'terms_agreed' => $application->terms_agreed,
-                'created_at' => $application->created_at ? $application->created_at->format('Y-m-d H:i:s') : null,
-                'updated_at' => $application->updated_at ? $application->updated_at->format('Y-m-d H:i:s') : null,
-                'created_by_user_id' => $application->created_by_user_id,
-                'updated_by' => $application->updated_by,
-                
-                'create_date' => $application->timestamp ? $application->timestamp->format('Y-m-d') : null,
-                'create_time' => $application->timestamp ? $application->timestamp->format('H:i:s') : null
-            ];
-            
             return response()->json([
-                'application' => $formattedApplication,
-                'success' => true
+                'application' => $application
             ]);
+
         } catch (\Exception $e) {
-            Log::error('ApplicationController show error: ' . $e->getMessage());
-            
+            Log::error('Application not found', [
+                'id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
-                'message' => 'Application not found or error retrieving application',
-                'error' => $e->getMessage(),
-                'success' => false
+                'message' => 'Application not found',
+                'error' => $e->getMessage()
             ], 404);
         }
     }
 
-    public function update(Request $request, $id)
+    public function updateStatus(Request $request, $id)
     {
         try {
-            $validatedData = $request->validate([
-                'status' => 'nullable|string|max:100',
-                'email_address' => 'nullable|email',
-                'first_name' => 'nullable|string|max:255',
-                'middle_initial' => 'nullable|string|max:1',
-                'last_name' => 'nullable|string|max:255',
-                'mobile_number' => 'nullable|string|max:50',
-                'secondary_mobile_number' => 'nullable|string|max:50',
-                'region' => 'nullable|string|max:255',
-                'city' => 'nullable|string|max:255',
-                'barangay' => 'nullable|string|max:255',
-                'location' => 'nullable|string|max:255',
-                'installation_address' => 'nullable',
-                'landmark' => 'nullable',
-                'referred_by' => 'nullable|string|max:255',
-                'desired_plan' => 'nullable|string|max:255',
-                'promo' => 'nullable|string|max:255'
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|string|in:pending,approved,rejected',
             ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
             $application = Application::findOrFail($id);
-            $validatedData['updated_by'] = auth()->user()->email ?? 'system';
-            $application->update($validatedData);
+            $application->status = $request->status;
+            $application->save();
 
             return response()->json([
-                'message' => 'Application updated successfully',
-                'application' => $application,
-                'success' => true
+                'message' => 'Application status updated successfully',
+                'application' => $application
             ]);
+
         } catch (\Exception $e) {
-            Log::error('ApplicationController update error: ' . $e->getMessage());
-            
-            return response()->json([
-                'message' => 'Failed to update application',
-                'error' => $e->getMessage(),
-                'success' => false
-            ], 500);
-        }
-    }
-
-    public function destroy($id)
-    {
-        try {
-            $application = Application::findOrFail($id);
-            $application->delete();
-
-            return response()->json([
-                'message' => 'Application deleted successfully',
-                'success' => true
+            Log::error('Failed to update application status', [
+                'id' => $id,
+                'error' => $e->getMessage()
             ]);
-        } catch (\Exception $e) {
-            Log::error('ApplicationController destroy error: ' . $e->getMessage());
-            
+
             return response()->json([
-                'message' => 'Failed to delete application',
-                'error' => $e->getMessage(),
-                'success' => false
+                'message' => 'Failed to update application status',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

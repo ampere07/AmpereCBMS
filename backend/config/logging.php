@@ -117,50 +117,6 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
-
-        'billing' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/billinggeneration.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 30,
-        ],
-
-        'payment' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/payment.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 30,
-        ],
-
-        'email' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/email.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 30,
-        ],
-
-        'overdue' => [
-            'driver' => 'single',
-            'path' => storage_path('logs/overdue.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'replace_placeholders' => true,
-        ],
-
-        'radiussync' => [
-            'driver' => 'daily',
-            'path' => storage_path('logs/radiussync/radiussync.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'days' => 30,
-        ],
-
-        'disconnection' => [
-            'driver' => 'single',
-            'path' => storage_path('logs/disconnectionnotice.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
-            'replace_placeholders' => true,
-        ],
     ],
 
 ];
-
-

@@ -1,66 +1,189 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# AmpereCBMS Backend (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel API backend for the Ampere Cloud Business Management System.
 
-## About Laravel
+## Setup Instructions
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Prerequisites
+- PHP 8.0 or higher
+- Composer
+- MySQL or SQLite database
+- Node.js (for npm start command)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Installation
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. **Install PHP dependencies**:
+   ```bash
+   composer install
+   ```
 
-## Learning Laravel
+2. **Environment configuration**:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+3. **Configure database** in `.env` file:
+   ```
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=ampere_cbms
+   DB_USERNAME=your_username
+   DB_PASSWORD=your_password
+   ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+4. **Run database migrations**:
+   ```bash
+   php artisan migrate
+   ```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+5. **Start the server**:
+   ```bash
+   npm start
+   ```
+   This runs: `php artisan serve --host=127.0.0.1 --port=8000`
 
-## Laravel Sponsors
+   Alternatively, you can run:
+   ```bash
+   php artisan serve --port=8000
+   ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+## API Endpoints
 
-### Premium Partners
+### Application Management
+- `POST /api/application/store` - Submit new application
+- `GET /api/applications` - Get all applications (paginated)
+- `GET /api/applications/{id}` - Get specific application
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+### Utility Endpoints
+- `GET /api/health` - Health check
+- `GET /api/debug` - Debug information and application count
+- `POST /api/reset-table` - Reset application table (testing only)
 
-## Contributing
+## Database Schema
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+The main table is `application` with the following key fields:
 
-## Code of Conduct
+### Primary Key
+- `Application_ID` - Unique 7-digit random integer identifier (replaces auto-incrementing ID)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Contact Information
+- `Email_Address` (unique)
+- `Mobile_Number`
+- `First_Name`, `Last_Name`, `Middle_Initial`
+- `Secondary_Mobile_Number` (nullable)
 
-## Security Vulnerabilities
+### Location Details
+- `Region` - Philippine region name (not ID)
+- `City` - City/municipality name (not ID)
+- `Barangay` - Barangay name (not ID)
+- `Installation_Address`
+- `Landmark`
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Plan and Preferences
+- `Desired_Plan`
+- `Select_the_applicable_promo`
+- `Referred_by` (nullable)
 
-## License
+### Document Paths
+- `Proof_of_Billing`
+- `Government_Valid_ID`
+- `2nd_Government_Valid_ID` (nullable)
+- `House_Front_Picture`
+- `First_Nearest_landmark`
+- `Second_Nearest_landmark`
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Status and Metadata
+- `Status` (default: 'pending')
+- `I_agree_to_the_terms_and_conditions` (boolean)
+- `Timestamp` (auto-generated)
+
+## File Upload Configuration
+
+- Upload directory: `public/assets/documents/`
+- Supported formats: JPG, PNG, PDF
+- Maximum file size: 2MB per file
+- Files are renamed with timestamp and unique ID
+
+## Key Features
+
+### Validation
+- Email uniqueness check
+- Mobile number format validation
+- File type and size validation
+- Required field validation
+
+### Application ID Generation
+- Each application receives a unique 7-digit random integer identifier
+- System ensures uniqueness by checking existing IDs before assignment
+- No sequential numbering for enhanced security
+
+### Geographic Data Processing
+- Accepts region, city, and barangay **names** (not IDs)
+- Frontend converts ID selections to names before submission
+- Database stores actual location names for better readability
+
+### Error Handling
+- Comprehensive validation error messages
+- Proper HTTP status codes
+- Detailed logging for debugging
+
+## Development Notes
+
+### Migration Management
+The application automatically checks for the application table existence and runs migrations if needed.
+
+### Model Usage
+The `Application` model is used throughout the controller for database operations instead of raw DB queries.
+
+### Logging
+All significant operations are logged to `storage/logs/laravel.log`
+
+### CORS Configuration
+Configured to accept requests from `localhost:3000` for frontend integration.
+
+## Troubleshooting
+
+### Database Issues
+1. **Migration errors**: Ensure database exists and credentials are correct
+2. **Table not found**: Run `php artisan migrate`
+3. **Permission denied**: Check database user permissions
+4. **Application_ID field changes**: If upgrading from auto-increment to random IDs:
+   - Run the migration: `php artisan migrate --path=database/migrations/2025_09_28_000002_change_application_id_to_random.php`
+   - This changes Application_ID to support 7-digit random integers
+   - May require dropping foreign key constraints first
+
+### File Upload Issues
+1. **Directory not found**: Check `public/assets/documents/` exists with proper permissions
+2. **File size exceeded**: Verify PHP `upload_max_filesize` and `post_max_size` settings
+
+### API Errors
+1. **500 Internal Server Error**: Check `storage/logs/laravel.log` for details
+2. **422 Validation Error**: Review validation rules and request data format
+3. **CORS issues**: Verify frontend is running on port 3000
+
+## Testing Endpoints
+
+Use these endpoints for testing:
+
+```bash
+# Health check
+curl http://127.0.0.1:8000/api/health
+
+# Debug info
+curl http://127.0.0.1:8000/api/debug
+
+# Reset table (development only)
+curl -X POST http://127.0.0.1:8000/api/reset-table
+```
+
+## Application ID System
+
+The system generates unique 7-digit random integer IDs for each application:
+- **Range**: 1,000,000 to 9,999,999 (7 digits)
+- **Storage**: INT(7) database field
+- **Security**: Prevents enumeration attacks
+- **Uniqueness**: System checks for duplicates before assignment
+
+After changing the database field to INT(7) and updating the code, your application form submissions will receive unique 7-digit random Application IDs.

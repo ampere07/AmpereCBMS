@@ -8,14 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Application extends Model
 {
     use HasFactory;
+
     protected $table = 'applications';
     
-    protected $primaryKey = 'id';
     public $timestamps = true;
-    
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
-    
+
     protected $fillable = [
         'timestamp',
         'email_address',
@@ -25,6 +22,7 @@ class Application extends Model
         'mobile_number',
         'secondary_mobile_number',
         'installation_address',
+        'long_lat',
         'landmark',
         'region',
         'city',
@@ -36,55 +34,61 @@ class Application extends Model
         'referred_by',
         'proof_of_billing_url',
         'government_valid_id_url',
-        'secondary_government_valid_id_url',
+        'second_government_valid_id_url',
         'house_front_picture_url',
+        'document_attachment_url',
+        'other_isp_bill_url',
         'promo_url',
         'nearest_landmark1_url',
         'nearest_landmark2_url',
-        'document_attachment_url',
-        'other_isp_bill_url',
         'terms_agreed',
         'status',
-        'pppoe_username',
-        'pppoe_password',
         'created_by_user_id',
-        'updated_by'
+        'updated_by_user_id',
     ];
-    
+
     protected $casts = [
-        'id' => 'integer',
-        'timestamp' => 'datetime:Y-m-d H:i:s',
         'terms_agreed' => 'boolean',
-        'referrer_account_id' => 'integer',
-        'created_by_user_id' => 'integer',
-        'updated_by' => 'string',
-        'created_at' => 'datetime:Y-m-d H:i:s',
-        'updated_at' => 'datetime:Y-m-d H:i:s'
+        'timestamp' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
-    protected $dateFormat = 'Y-m-d H:i:s';
+    protected $attributes = [
+        'status' => 'pending',
+        'terms_agreed' => false,
+        'promo' => 'None',
+    ];
 
-    public function getDateFormat()
+    /**
+     * Generate a unique 7-digit application ID
+     */
+    public static function generateUniqueApplicationId()
     {
-        return 'Y-m-d H:i:s';
-    }
-    
-    public function getFullNameAttribute()
-    {
-        return trim(
-            $this->first_name . ' ' . 
-            ($this->middle_initial ? $this->middle_initial . ' ' : '') . 
-            $this->last_name
-        );
-    }
-    
-    public function getFormattedTimestampAttribute()
-    {
-        if (!$this->timestamp) {
-            return null;
-        }
+        do {
+            $applicationId = rand(1000000, 9999999);
+        } while (self::where('id', $applicationId)->exists());
         
-        return $this->timestamp->format('m/d/Y H:i:s');
+        return $applicationId;
+    }
+
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', 'approved');
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', 'rejected');
     }
 }
-

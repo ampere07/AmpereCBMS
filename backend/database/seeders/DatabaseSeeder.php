@@ -14,12 +14,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        // Call seeders in order
-        $this->call([
-            InitialDataSeeder::class,
-            LocationSeeder::class,
-        ]);
-        
         // \App\Models\User::factory(10)->create();
 
         // \App\Models\User::factory()->create([
