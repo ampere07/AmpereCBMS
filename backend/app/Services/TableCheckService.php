@@ -351,8 +351,6 @@ class TableCheckService
                     // Address information
                     $table->text('address_line')->nullable();
                     $table->string('landmark')->nullable();
-                    $table->string('nearest_landmark1')->nullable();
-                    $table->string('nearest_landmark2')->nullable();
                     
                     // Plan information
                     $table->unsignedBigInteger('plan_id')->nullable();

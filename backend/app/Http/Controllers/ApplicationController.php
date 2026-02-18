@@ -38,8 +38,6 @@ class ApplicationController extends Controller
                 'governmentIdPrimary' => 'required|file|mimes:jpg,jpeg,png,pdf|max:10240',
                 'governmentIdSecondary' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
                 'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:10240',
-                'nearestLandmark1Image' => 'required|file|mimes:jpg,jpeg,png|max:10240',
-                'nearestLandmark2Image' => 'required|file|mimes:jpg,jpeg,png|max:10240',
                 'promoProof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
             ]);
 
@@ -97,8 +95,6 @@ class ApplicationController extends Controller
                 $application->proof_of_billing_url = 'processing';
                 $application->government_valid_id_url = 'processing';
                 $application->house_front_picture_url = 'processing';
-                $application->nearest_landmark1_url = 'processing';
-                $application->nearest_landmark2_url = 'processing';
 
                 $application->save();
 
@@ -115,8 +111,6 @@ class ApplicationController extends Controller
                     'governmentIdPrimary' => 'government_valid_id_url',
                     'governmentIdSecondary' => 'second_government_valid_id_url',
                     'houseFrontPicture' => 'house_front_picture_url',
-                    'nearestLandmark1Image' => 'nearest_landmark1_url',
-                    'nearestLandmark2Image' => 'nearest_landmark2_url',
                     'promoProof' => 'promo_url',
                 ];
 

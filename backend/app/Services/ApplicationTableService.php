@@ -55,8 +55,6 @@ class ApplicationTableService
                 $table->string('Government_Valid_ID')->nullable();
                 $table->string('2nd_Government_Valid_ID')->nullable();
                 $table->string('House_Front_Picture')->nullable();
-                $table->string('First_Nearest_landmark')->nullable();
-                $table->string('Second_Nearest_landmark')->nullable();
                 
                 // Additional fields
                 $table->boolean('I_agree_to_the_terms_and_conditions')->default(false);

@@ -239,8 +239,6 @@ class ImageProcessingService
             'government_valid_id_url' => 'governmentIdPrimary',
             'second_government_valid_id_url' => 'governmentIdSecondary',
             'house_front_picture_url' => 'houseFrontPicture',
-            'nearest_landmark1_url' => 'nearestLandmark1Image',
-            'nearest_landmark2_url' => 'nearestLandmark2Image',
             'promo_url' => 'promoProof',
         ];
         

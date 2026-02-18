@@ -39,8 +39,6 @@ class Application extends Model
         'document_attachment_url',
         'other_isp_bill_url',
         'promo_url',
-        'nearest_landmark1_url',
-        'nearest_landmark2_url',
         'terms_agreed',
         'status',
         'created_by_user_id',

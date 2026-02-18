@@ -60,8 +60,6 @@ class GoogleDriveService
                 'governmentIdPrimary' => 'government_valid_id_url',
                 'governmentIdSecondary' => 'second_government_valid_id_url',
                 'houseFrontPicture' => 'house_front_picture_url',
-                'nearestLandmark1Image' => 'nearest_landmark1_url',
-                'nearestLandmark2Image' => 'nearest_landmark2_url',
                 'promoProof' => 'promo_url',
             ];
 
@@ -220,8 +218,6 @@ class GoogleDriveService
             'governmentIdPrimary' => 'Government_ID_Primary',
             'governmentIdSecondary' => 'Government_ID_Secondary',
             'houseFrontPicture' => 'House_Front_Picture',
-            'nearestLandmark1Image' => 'Nearest_Landmark_1',
-            'nearestLandmark2Image' => 'Nearest_Landmark_2',
             'promoProof' => 'Promo_Proof',
         ];
 
