@@ -500,7 +500,12 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    if (name === 'middleInitial') {
+      const filteredValue = value.replace(/[^a-zA-Z]/g, '');
+      setFormData({ ...formData, [name]: filteredValue });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleFileChange = (fieldName: string, file: File | null) => {
@@ -1074,6 +1079,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     onChange={handleInputChange}
                     maxLength={1}
                     placeholder="M"
+                    pattern="[A-Za-z]"
+                    title="Please enter a single letter"
                     className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{
                       borderColor: '#E5E7EB',
@@ -1250,7 +1257,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                     value={formData.installationAddress}
                     onChange={handleInputChange}
                     required={requireFields}
-                    placeholder="Enter complete address details"
+                    placeholder="House/Unit Number & Street Name"
                     rows={3}
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                     style={{

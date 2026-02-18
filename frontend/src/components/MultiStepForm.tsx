@@ -462,7 +462,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    if (name === 'middleInitial') {
+      const filteredValue = value.replace(/[^a-zA-Z]/g, '');
+      setFormData({ ...formData, [name]: filteredValue });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleFileChange = (fieldName: string, file: File | null) => {
@@ -982,7 +987,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             value={formData.installationAddress}
             onChange={handleInputChange}
             required={requireFields}
-            placeholder="Enter complete address details"
+            placeholder="House/Unit Number & Street Name"
             title="Please provide your complete installation address"
             rows={3}
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
