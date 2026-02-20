@@ -1,19 +1,19 @@
 {
-  "short_name": "Apply - Sync",
-  "name": "Apply - Sync",
+  "short_name": "Apply - Atss Fiber",
+  "name": "Apply - Atss Fiber",
   "icons": [
     {
-      "src": "logo1.png",
+      "src": "applogo.png",
       "type": "image/png",
       "sizes": "64x64 32x32 24x24 16x16"
     },
     {
-      "src": "logo1.png",
+      "src": "applogo.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo1.png",
+      "src": "applogo.png",
       "type": "image/png",
       "sizes": "512x512"
     }
