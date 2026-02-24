@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use App\Models\SMSTemplate;
+use App\Services\EmailQueueService;
+use App\Services\ItexmoSmsService;
 
 class ApplicationController extends Controller
 {
@@ -78,7 +81,7 @@ class ApplicationController extends Controller
                 
                 $plan = Plan::find($request->plan);
                 if ($plan) {
-                    $application->desired_plan = $plan->plan_name . ' - ₱' . number_format($plan->price, 2);
+                    $application->desired_plan = $plan->plan_name . ' - ' . number_format($plan->price, 2);
                 } else {
                     $application->desired_plan = $request->plan;
                 }
@@ -157,6 +160,51 @@ class ApplicationController extends Controller
                     'email' => $application->email_address,
                     'queued_images' => ImageQueue::where('application_id', $application->id)->count()
                 ]);
+
+                try {
+                    $emailQueueService = app(EmailQueueService::class);
+                    $variables = [
+                        'recipient_email' => $application->email_address,
+                        'account_no' => $application->id,
+                        'first_name' => $application->first_name,
+                        'last_name' => $application->last_name,
+                        'middle_initial' => $application->middle_initial,
+                        'mobile_number' => $application->mobile_number,
+                        'desired_plan' => $application->desired_plan,
+                        'portal_url' => config('app.url'),
+                        'company_name' => config('app.name', 'Ampere'),
+                        'application_id' => $application->id,
+                        'status' => $application->status,
+                    ];
+                    
+                    $emailQueueService->queueFromTemplate('Application', $variables);
+                    Log::info('Successfully queued Application email to ' . $application->email_address);
+
+                    $smsTemplate = SMSTemplate::where('template_type', 'Application')
+                        ->where('is_active', true)
+                        ->first();
+
+                    if ($smsTemplate && $application->mobile_number) {
+                        $smsService = app(ItexmoSmsService::class);
+                        
+                        $message = $smsTemplate->message_content;
+                        
+                        foreach ($variables as $key => $value) {
+                            $message = str_replace('{{' . $key . '}}', $value ?? '', $message);
+                        }
+                        
+                        $smsService->send([
+                            'contact_no' => $application->mobile_number,
+                            'message' => $message
+                        ]);
+                        Log::info('Successfully sent Application SMS to ' . $application->mobile_number);
+                    }
+                } catch (\Exception $notifyException) {
+                    Log::error('Failed to send application notification (Email/SMS)', [
+                        'application_id' => $application->id,
+                        'error' => $notifyException->getMessage()
+                    ]);
+                }
 
                 return response()->json([
                     'message' => 'Application submitted successfully. Images will be processed shortly.',
