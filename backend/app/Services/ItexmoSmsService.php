@@ -149,6 +149,7 @@ class ItexmoSmsService
     protected function sendWithRetry(array $payload): string
     {
         $attempt = 0;
+        $lastError = '';
 
         do {
             $attempt++;
@@ -161,20 +162,47 @@ class ItexmoSmsService
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
                 curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeoutSeconds);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                 
                 $response = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
                 curl_close($ch);
 
                 if ($httpCode >= 200 && $httpCode < 300) {
-                    return $response ?: 'Success: SMS Sent';
+                    // Itexmo sometimes returns a number (0 for success, others for error)
+                    if ($response === '0' || $response === 'Success: SMS Sent') {
+                        return $response ?: 'Success';
+                    }
+                    
+                    // If it's a numeric error code from Itexmo
+                    if (is_numeric($response) && (int)$response > 0) {
+                        $itexmoErrors = [
+                            '1' => 'Invalid ApiCode/Credentials',
+                            '2' => 'No SMS Balance',
+                            '3' => 'Invalid Recipient',
+                            '4' => 'Sender Id not Yet Registered',
+                            '5' => 'Message contains Filtered Words',
+                            '6' => 'SMS API is Under Maintenance',
+                            '7' => 'Account Blocked',
+                            '8' => 'Invalid Target Gateway'
+                        ];
+                        $errMsg = $itexmoErrors[$response] ?? "Itexmo Error Code: {$response}";
+                        throw new Exception($errMsg);
+                    }
+
+                    return $response ?: 'Success';
                 }
+
+                $lastError = $curlError ?: "HTTP Code: {$httpCode}, Response: {$response}";
 
                 if ($attempt < $this->maxRetries) {
                     sleep(2);
                 }
 
             } catch (Exception $e) {
+                $lastError = $e->getMessage();
                 if ($attempt >= $this->maxRetries) {
                     throw $e;
                 }
@@ -183,14 +211,21 @@ class ItexmoSmsService
 
         } while ($attempt < $this->maxRetries);
 
-        throw new Exception('SMS sending failed after ' . $this->maxRetries . ' attempts');
+        throw new Exception("SMS sending failed after {$this->maxRetries} attempts. Last error: {$lastError}");
     }
 
     protected function normalizePhoneNumber(string $contactNo): string
     {
-        $contactNo = trim($contactNo);
+        // Remove all non-numeric characters
+        $contactNo = preg_replace('/[^0-9]/', '', $contactNo);
         
-        if (strlen($contactNo) === 10 && substr($contactNo, 0, 1) === '9') {
+        // Handle +63 and 63 prefix
+        if (str_starts_with($contactNo, '63') && strlen($contactNo) === 12) {
+            $contactNo = '0' . substr($contactNo, 2);
+        }
+        
+        // Handle 10-digit format (9xxxxxxxxx)
+        if (strlen($contactNo) === 10 && str_starts_with($contactNo, '9')) {
             $contactNo = '0' . $contactNo;
         }
         

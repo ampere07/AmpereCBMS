@@ -177,7 +177,7 @@ class ApplicationController extends Controller
                         'status' => $application->status,
                     ];
                     
-                    $emailQueueService->queueFromTemplate('Application', $variables);
+                    $emailQueueService->queueFromTemplate('APPLICATION', $variables);
                     Log::info('Successfully queued Application email to ' . $application->email_address);
 
                     $smsTemplate = SMSTemplate::where('template_type', 'Application')
@@ -199,7 +199,7 @@ class ApplicationController extends Controller
                         ]);
                         Log::info('Successfully sent Application SMS to ' . $application->mobile_number);
                     }
-                } catch (\Exception $notifyException) {
+                } catch (\Throwable $notifyException) {
                     Log::error('Failed to send application notification (Email/SMS)', [
                         'application_id' => $application->id,
                         'error' => $notifyException->getMessage()
@@ -216,7 +216,7 @@ class ApplicationController extends Controller
                 throw $e;
             }
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Application submission failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

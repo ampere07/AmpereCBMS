@@ -20,10 +20,7 @@ class EmailQueue extends Model
         'status',
         'sent_at',
         'attempts',
-        'error_message',
-        'email_sender',
-        'reply_to',
-        'sender_name'
+        'error_message'
     ];
 
     protected $casts = [
