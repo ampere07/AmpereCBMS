@@ -25,6 +25,9 @@ class EmailQueueService
             'subject' => $data['subject'],
             'body_html' => $data['body_html'],
             'attachment_path' => $data['attachment_path'] ?? null,
+            'email_sender' => $data['email_sender'] ?? null,
+            'sender_name' => $data['sender_name'] ?? null,
+            'reply_to' => $data['reply_to'] ?? null,
             'status' => 'pending'
         ]);
 
@@ -99,7 +102,10 @@ class EmailQueueService
                 'bcc' => $job->bcc,
                 'subject' => $job->subject,
                 'html' => $job->body_html,
-                'attachment_path' => $job->attachment_path
+                'attachment_path' => $job->attachment_path,
+                'email_sender' => $job->email_sender,
+                'sender_name' => $job->sender_name,
+                'reply_to' => $job->reply_to
             ]);
 
             if ($result['success']) {
@@ -154,7 +160,10 @@ class EmailQueueService
                 'bcc' => $job->bcc,
                 'subject' => $job->subject,
                 'html' => $job->body_html,
-                'attachment_path' => $job->attachment_path
+                'attachment_path' => $job->attachment_path,
+                'email_sender' => $job->email_sender,
+                'sender_name' => $job->sender_name,
+                'reply_to' => $job->reply_to
             ]);
 
             if ($result['success']) {

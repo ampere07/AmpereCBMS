@@ -50,7 +50,10 @@ class EmailQueueController extends Controller
             'account_no' => 'nullable|string|max:50',
             'cc' => 'nullable|string',
             'bcc' => 'nullable|string',
-            'attachment_path' => 'nullable|string|max:255'
+            'attachment_path' => 'nullable|string|max:255',
+            'email_sender' => 'nullable|string|max:255',
+            'sender_name' => 'nullable|string|max:255',
+            'reply_to' => 'nullable|string|max:255'
         ]);
 
         if ($validator->fails()) {
