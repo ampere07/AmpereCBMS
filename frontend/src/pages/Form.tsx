@@ -1363,7 +1363,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                       })
                       .map(plan => (
                         <option key={plan.id} value={plan.id}>
-                          {plan.plan_name} {plan.price}
+                          {plan.plan_name} {Math.floor(plan.price)}
                         </option>
                       ))}
                   </select>
@@ -1567,8 +1567,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Submission Successful!</h3>
-            <p className="text-center text-gray-600 mb-6">Your application has been submitted successfully and is now pending approval.</p>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Application Received!</h3>
+            <p className="text-center text-gray-600 mb-6">Thank you for your application. We will review your requirements and contact you within 2-3 business days.</p>
             <div className="flex justify-center">
               <button
                 onClick={() => {

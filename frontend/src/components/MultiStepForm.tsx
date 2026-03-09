@@ -1098,7 +1098,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               })
               .map(plan => (
                 <option key={plan.id} value={plan.id}>
-                  {plan.plan_name} {plan.price}
+                  {plan.plan_name} {Math.floor(plan.price)}
                 </option>
               ))}
           </select>
