@@ -80,7 +80,15 @@ interface FormProps {
   requireFields?: boolean;
 }
 
-const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'original', isEditMode: externalIsEditMode, onEditModeChange, requireFields = true }, ref) => {
+const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<FormRef>) {
+  const { 
+    showEditButton = false, 
+    onLayoutChange, 
+    currentLayout = 'original', 
+    isEditMode: externalIsEditMode, 
+    onEditModeChange, 
+    requireFields = true 
+  } = props;
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const googleMapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
   const [showMapModal, setShowMapModal] = useState(false);
@@ -116,6 +124,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     showHouseFront: string;
     showSecondaryNumber: string;
     showCaptcha: string;
+    termsAndCondition: string;
+    privacyPolicy: string;
+    contactInformation: string;
   }>({
     backgroundColor: '',
     buttonColor: '',
@@ -128,7 +139,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
     showIdSecondary: 'active',
     showHouseFront: 'active',
     showSecondaryNumber: 'active',
-    showCaptcha: 'active'
+    showCaptcha: 'active',
+    termsAndCondition: '',
+    privacyPolicy: '',
+    contactInformation: ''
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -144,6 +158,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
   const [showHouseFront, setShowHouseFront] = useState('active');
   const [showSecondaryNumber, setShowSecondaryNumber] = useState('active');
   const [showCaptcha, setShowCaptcha] = useState('active');
+  const [termsAndCondition, setTermsAndCondition] = useState('');
+  const [privacyPolicy, setPrivacyPolicy] = useState('');
+  const [contactInformation, setContactInformation] = useState('');
 
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -202,6 +219,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             if (result.data.house_front_) setShowHouseFront(result.data.house_front_);
             if (result.data.secondary_number) setShowSecondaryNumber(result.data.secondary_number);
             if (result.data.captcha) setShowCaptcha(result.data.captcha);
+            if (result.data.terms_and_condition) setTermsAndCondition(result.data.terms_and_condition);
+            if (result.data.privacy_policy) setPrivacyPolicy(result.data.privacy_policy);
+            if (result.data.contact_information) setContactInformation(result.data.contact_information);
           }
         }
       } catch (error) {
@@ -242,6 +262,9 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       setShowHouseFront(initialEditValues.showHouseFront);
       setShowSecondaryNumber(initialEditValues.showSecondaryNumber);
       setShowCaptcha(initialEditValues.showCaptcha);
+      setTermsAndCondition(initialEditValues.termsAndCondition);
+      setPrivacyPolicy(initialEditValues.privacyPolicy);
+      setContactInformation(initialEditValues.contactInformation);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -259,7 +282,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
         showIdSecondary: showIdSecondary,
         showHouseFront: showHouseFront,
         showSecondaryNumber: showSecondaryNumber,
-        showCaptcha: showCaptcha
+        showCaptcha: showCaptcha,
+        termsAndCondition: termsAndCondition,
+        privacyPolicy: privacyPolicy,
+        contactInformation: contactInformation
       });
       setHasUnsavedChanges(false);
     }
@@ -325,6 +351,10 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
       formData.append('house_front_', showHouseFront);
       formData.append('secondary_number', showSecondaryNumber);
       formData.append('captcha', showCaptcha);
+
+      formData.append('terms_and_condition', termsAndCondition);
+      formData.append('privacy_policy', privacyPolicy);
+      formData.append('contact_information', contactInformation);
 
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -980,6 +1010,72 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   <span className="text-sm font-medium" style={{ color: '#374151' }}>%</span>
                 </div>
                 <small className="text-xs mt-1 block" style={{ color: '#6B7280' }}>0% = transparent, 100% = opaque</small>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Terms and Conditions
+                </label>
+                <textarea
+                  value={termsAndCondition}
+                  onChange={(e) => {
+                    setTermsAndCondition(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter terms and conditions text..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Privacy Policy
+                </label>
+                <textarea
+                  value={privacyPolicy}
+                  onChange={(e) => {
+                    setPrivacyPolicy(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter privacy policy text..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Contact Information
+                </label>
+                <textarea
+                  value={contactInformation}
+                  onChange={(e) => {
+                    setContactInformation(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter contact information..."
+                />
               </div>
             </div>
 
@@ -1780,7 +1876,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
             <div className="flex justify-between items-center px-8 py-6 border-b border-gray-200">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Terms & Conditions</h2>
-                <p className="text-sm text-gray-500 mt-1">ATSS Fiber Internet Services</p>
+                <p className="text-sm text-gray-500 mt-1">{brandName || 'ATSS'} Fiber Internet Services</p>
               </div>
               <button
                 onClick={() => setShowTermsModal(false)}
@@ -1818,34 +1914,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   </button>
                   {expandedSections.includes('terms') && (
                     <div className="px-6 pb-6 space-y-4 border-t border-gray-100">
-                      <div className="pt-4">
-                        <h4 className="font-semibold text-gray-900 mb-2">Service Provision</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">ATSS provides internet services on a best-effort basis. Actual speeds and service quality may vary depending on network conditions, customer equipment, location, and external factors.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Installation & Equipment</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">All installed network equipment provided by ATSS remains company property unless otherwise stated. Customers are responsible for safeguarding installed equipment. Any loss, damage, or unauthorized relocation may be subject to replacement or service fees.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Billing & Payments</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">Internet service is billed in advance. Failure to settle payments on or before the due date may result in temporary service restriction or suspension without prior notice. Reconnection may be subject to applicable fees. Long-term non-payment may result in permanent service termination.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Acceptable Use</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">Customers agree not to use the service for illegal activities, network abuse, spam distribution, unauthorized resale, or actions that may degrade network performance for other users. ATSS reserves the right to suspend or terminate service, with or without notice, in cases of policy violation.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Service Interruptions</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">Service interruptions may occur due to maintenance, equipment failure, power outages, force majeure, or third-party network issues. ATSS will make reasonable efforts to restore service promptly. Scheduled maintenance may be performed without prior notice when necessary to protect network stability.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Updates to Terms</h4>
-                        <p className="text-gray-600 text-sm leading-relaxed">ATSS may update these terms from time to time. Continued use of the service constitutes acceptance of the updated terms.</p>
+                      <div className="pt-4 text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+                        {termsAndCondition || `Please refer to ${brandName || 'ATSS'}'s official terms and conditions documentation.`}
                       </div>
                     </div>
                   )}
@@ -1868,139 +1938,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   </button>
                   {expandedSections.includes('privacy') && (
                     <div className="px-6 pb-6 space-y-4 border-t border-gray-100">
-                      <div className="pt-4">
-                        <p className="text-gray-600 text-sm leading-relaxed mb-4">ATSS is committed to protecting personal data in accordance with the Data Privacy Act of 2012 (RA 10173) and National Privacy Commission regulations.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Information We Collect</h4>
-                        <ul className="space-y-1.5 text-gray-600 text-sm">
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Full name, address, contact number, and email</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Valid ID (type, number, and copy)</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Billing and payment records</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Service and account information</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Internet usage logs (IP, MAC, bandwidth usage)</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Customer support interactions</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Why We Collect Your Information</h4>
-                        <ul className="space-y-1.5 text-gray-600 text-sm">
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Create and verify your account</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Provide, maintain, and troubleshoot your internet service</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Process billing and payments</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Deliver customer support</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Secure our network</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Comply with legal and regulatory requirements (BIR, LGU, NTC, law enforcement)</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">How Your Data Is Shared</h4>
-                        <ul className="space-y-1.5 text-gray-600 text-sm">
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Authorized ATSS employees</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Third-party service providers (e.g., Appsheet)</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Payment gateways</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Government agencies when required by law</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span className="font-semibold">We DO NOT sell your personal data.</span>
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Data Retention</h4>
-                        <ul className="space-y-1.5 text-gray-600 text-sm">
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Subscriber & Billing: 1 year from termination</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Network Logs: 1 year</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Support Records: 2 years</span>
-                          </li>
-                        </ul>
-                        <p className="text-gray-600 text-sm mt-2">After these periods, data is securely deleted or destroyed.</p>
-                      </div>
-
-                      <div>
-                        <h4 className="font-semibold text-gray-900 mb-2">Your Rights</h4>
-                        <ul className="space-y-1.5 text-gray-600 text-sm">
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Access your personal information</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Request correction of data</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Withdraw consent</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>Request deletion</span>
-                          </li>
-                          <li className="flex items-start">
-                            <span className="text-gray-400 mr-2">•</span>
-                            <span>File a complaint with NPC</span>
-                          </li>
-                        </ul>
+                      <div className="pt-4 text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+                        {privacyPolicy || `${brandName || 'ATSS'} is committed to protecting your personal data in accordance with the Data Privacy Act of 2012.`}
                       </div>
                     </div>
                   )}
@@ -2023,23 +1962,8 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
                   </button>
                   {expandedSections.includes('contact') && (
                     <div className="px-6 pb-6 border-t border-gray-100">
-                      <div className="pt-4 space-y-4">
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <h4 className="font-semibold text-gray-900 mb-3">Data Protection Officer</h4>
-                          <div className="space-y-2 text-sm">
-                            <p className="text-gray-600"><span className="font-medium text-gray-700">Name:</span> Joselito Abdao</p>
-                            <p className="text-gray-600"><span className="font-medium text-gray-700">Email:</span> dpo@atssfiber.ph</p>
-                            <p className="text-gray-600"><span className="font-medium text-gray-700">Address:</span> Purok 4 Zone 8 Cupang Antipolo Rizal</p>
-                          </div>
-                        </div>
-
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <h4 className="font-semibold text-gray-900 mb-3">Customer Support</h4>
-                          <div className="space-y-2 text-sm">
-                            <p className="text-gray-600"><span className="font-medium text-gray-700">Phone:</span> 0956 370 4451</p>
-                            <p className="text-gray-600"><span className="font-medium text-gray-700">Email:</span> support@atssfiber.ph</p>
-                          </div>
-                        </div>
+                      <div className="pt-4 text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+                        {contactInformation || `For any inquiries, please contact ${brandName || 'ATSS'} customer support.`}
                       </div>
                     </div>
                   )}
@@ -2048,7 +1972,7 @@ const Form = forwardRef<FormRef, FormProps>(({ showEditButton = false, onLayoutC
 
               <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
                 <p className="text-gray-700 text-sm leading-relaxed">
-                  <span className="font-semibold">By continuing, you confirm that you have read, understood, and agree to the ATSS Terms & Conditions and Privacy Policy,</span> including service limitations, billing policies, and acceptable use guidelines.
+                  <span className="font-semibold">By continuing, you confirm that you have read, understood, and agree to the {brandName || 'ATSS'} Terms & Conditions and Privacy Policy,</span> including service limitations, billing policies, and acceptable use guidelines.
                 </p>
               </div>
             </div>

@@ -118,6 +118,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     showHouseFront: string;
     showSecondaryNumber: string;
     showCaptcha: string;
+    termsAndCondition: string;
+    privacyPolicy: string;
+    contactInformation: string;
   }>({
     backgroundColor: '',
     buttonColor: '',
@@ -130,7 +133,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     showIdSecondary: 'active',
     showHouseFront: 'active',
     showSecondaryNumber: 'active',
-    showCaptcha: 'active'
+    showCaptcha: 'active',
+    termsAndCondition: '',
+    privacyPolicy: '',
+    contactInformation: ''
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -140,6 +146,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [showHouseFront, setShowHouseFront] = useState('active');
   const [showSecondaryNumber, setShowSecondaryNumber] = useState('active');
   const [showCaptcha, setShowCaptcha] = useState('active');
+  const [termsAndCondition, setTermsAndCondition] = useState('');
+  const [privacyPolicy, setPrivacyPolicy] = useState('');
+  const [contactInformation, setContactInformation] = useState('');
 
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -201,6 +210,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             if (result.data.house_front_) setShowHouseFront(result.data.house_front_);
             if (result.data.secondary_number) setShowSecondaryNumber(result.data.secondary_number);
             if (result.data.captcha) setShowCaptcha(result.data.captcha);
+            if (result.data.terms_and_condition) setTermsAndCondition(result.data.terms_and_condition);
+            if (result.data.privacy_policy) setPrivacyPolicy(result.data.privacy_policy);
+            if (result.data.contact_information) setContactInformation(result.data.contact_information);
           }
         }
       } catch (error) {
@@ -230,6 +242,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setShowHouseFront(initialEditValues.showHouseFront);
       setShowSecondaryNumber(initialEditValues.showSecondaryNumber);
       setShowCaptcha(initialEditValues.showCaptcha);
+      setTermsAndCondition(initialEditValues.termsAndCondition);
+      setPrivacyPolicy(initialEditValues.privacyPolicy);
+      setContactInformation(initialEditValues.contactInformation);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -247,7 +262,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         showIdSecondary: showIdSecondary,
         showHouseFront: showHouseFront,
         showSecondaryNumber: showSecondaryNumber,
-        showCaptcha: showCaptcha
+        showCaptcha: showCaptcha,
+        termsAndCondition: termsAndCondition,
+        privacyPolicy: privacyPolicy,
+        contactInformation: contactInformation
       });
       setHasUnsavedChanges(false);
     }
@@ -308,6 +326,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       formData.append('house_front_', showHouseFront);
       formData.append('secondary_number', showSecondaryNumber);
       formData.append('captcha', showCaptcha);
+
+      formData.append('terms_and_condition', termsAndCondition);
+      formData.append('privacy_policy', privacyPolicy);
+      formData.append('contact_information', contactInformation);
 
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -1347,7 +1369,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     <div style={{ backgroundColor: backgroundColor || '#1a1a1a', minHeight: '100vh', padding: '2rem 0' }}>
       <div className="mx-auto max-w-4xl px-4">
         {isEditMode && (
-          <div className="mb-6 border-2 rounded-lg p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
+          <>
+            <div className="mb-6 border-2 rounded-lg p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold" style={{ color: '#1F2937' }}>Edit</h3>
               <button
@@ -1544,6 +1567,74 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 </div>
                 <small className="text-xs mt-1 block" style={{ color: '#6B7280' }}>0% = transparent, 100% = opaque</small>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Terms and Conditions
+                </label>
+                <textarea
+                  value={termsAndCondition}
+                  onChange={(e) => {
+                    setTermsAndCondition(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter terms and conditions text..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Privacy Policy
+                </label>
+                <textarea
+                  value={privacyPolicy}
+                  onChange={(e) => {
+                    setPrivacyPolicy(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter privacy policy text..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Contact Information
+                </label>
+                <textarea
+                  value={contactInformation}
+                  onChange={(e) => {
+                    setContactInformation(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter contact information..."
+                />
+              </div>
+            </div>
+
             <div className="mt-8 border-t pt-6">
               <label className="block text-sm font-medium mb-4" style={{ color: '#374151' }}>
                 Form Field Visibility
@@ -1576,7 +1667,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 ))}
               </div>
             </div>
-          </div>
 
             <div className="mt-4">
 
@@ -1638,7 +1728,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               )}
             </div>
           </div>
-        )}
+        </>
+      )}
 
         <div className="rounded-lg p-8" style={{ backgroundColor: `rgba(${formBgColor ? `${parseInt(formBgColor.slice(1, 3), 16)}, ${parseInt(formBgColor.slice(3, 5), 16)}, ${parseInt(formBgColor.slice(5, 7), 16)}` : '255, 255, 255'}, ${(formBgOpacity / 100).toFixed(2)})`, boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)' }}>
           <div className="mb-6 flex justify-center items-center py-8">
@@ -1789,7 +1880,16 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         </div>
       )}
 
-      {showTermsModal && <TermsModal onClose={() => setShowTermsModal(false)} buttonColor={buttonColor} />}
+      {showTermsModal && (
+        <TermsModal
+          onClose={() => setShowTermsModal(false)}
+          buttonColor={buttonColor}
+          termsAndCondition={termsAndCondition}
+          privacyPolicy={privacyPolicy}
+          contactInformation={contactInformation}
+          brandName={brandName}
+        />
+      )}
 
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

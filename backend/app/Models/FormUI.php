@@ -25,6 +25,9 @@ class FormUI extends Model
         'house_front_',
         'secondary_number',
         'captcha',
+        'terms_and_condition',
+        'privacy_policy',
+        'contact_information',
     ];
 
     protected $casts = [

@@ -41,6 +41,9 @@ class FormUIController extends Controller
                     'house_front_' => 'active',
                     'secondary_number' => 'active',
                     'captcha' => 'active',
+                    'terms_and_condition' => null,
+                    'privacy_policy' => null,
+                    'contact_information' => null,
                 ]);
                 $settings = DB::table('form_ui')->first();
                 Log::info('Default settings created', ['settings' => $settings]);
@@ -95,6 +98,9 @@ class FormUIController extends Controller
                 'house_front_' => 'nullable|string|in:active,inactive',
                 'secondary_number' => 'nullable|string|in:active,inactive',
                 'captcha' => 'nullable|string|in:active,inactive',
+                'terms_and_condition' => 'nullable|string',
+                'privacy_policy' => 'nullable|string',
+                'contact_information' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -157,6 +163,18 @@ class FormUIController extends Controller
 
             if ($request->has('captcha')) {
                 $updateData['captcha'] = $request->input('captcha');
+            }
+
+            if ($request->has('terms_and_condition')) {
+                $updateData['terms_and_condition'] = $request->input('terms_and_condition');
+            }
+
+            if ($request->has('privacy_policy')) {
+                $updateData['privacy_policy'] = $request->input('privacy_policy');
+            }
+
+            if ($request->has('contact_information')) {
+                $updateData['contact_information'] = $request->input('contact_information');
             }
             
             Log::info('Update data prepared', ['updateData' => $updateData]);
