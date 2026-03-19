@@ -17,6 +17,14 @@ class FormUI extends Model
         'logo_url',
         'multi_step',
         'brand_name',
+        'transparency_rgba',
+        'form_hex',
+        'proof_of_billing',
+        'id_primary',
+        'id_secondary',
+        'house_front_',
+        'secondary_number',
+        'captcha',
     ];
 
     protected $casts = [

@@ -35,6 +35,12 @@ class FormUIController extends Controller
                     'logo_url' => null,
                     'multi_step' => 'inactive',
                     'brand_name' => null,
+                    'proof_of_billing' => 'active',
+                    'id_primary' => 'active',
+                    'id_secondary' => 'active',
+                    'house_front_' => 'active',
+                    'secondary_number' => 'active',
+                    'captcha' => 'active',
                 ]);
                 $settings = DB::table('form_ui')->first();
                 Log::info('Default settings created', ['settings' => $settings]);
@@ -83,6 +89,12 @@ class FormUIController extends Controller
                 'logo_url' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
                 'multi_step' => 'nullable|string|in:active,inactive',
                 'brand_name' => 'nullable|string|max:255',
+                'proof_of_billing' => 'nullable|string|in:active,inactive',
+                'id_primary' => 'nullable|string|in:active,inactive',
+                'id_secondary' => 'nullable|string|in:active,inactive',
+                'house_front_' => 'nullable|string|in:active,inactive',
+                'secondary_number' => 'nullable|string|in:active,inactive',
+                'captcha' => 'nullable|string|in:active,inactive',
             ]);
 
             if ($validator->fails()) {
@@ -121,6 +133,30 @@ class FormUIController extends Controller
             
             if ($request->has('transparency_rgba')) {
                 $updateData['transparency_rgba'] = $request->input('transparency_rgba');
+            }
+
+            if ($request->has('proof_of_billing')) {
+                $updateData['proof_of_billing'] = $request->input('proof_of_billing');
+            }
+
+            if ($request->has('id_primary')) {
+                $updateData['id_primary'] = $request->input('id_primary');
+            }
+
+            if ($request->has('id_secondary')) {
+                $updateData['id_secondary'] = $request->input('id_secondary');
+            }
+
+            if ($request->has('house_front_')) {
+                $updateData['house_front_'] = $request->input('house_front_');
+            }
+
+            if ($request->has('secondary_number')) {
+                $updateData['secondary_number'] = $request->input('secondary_number');
+            }
+
+            if ($request->has('captcha')) {
+                $updateData['captcha'] = $request->input('captcha');
             }
             
             Log::info('Update data prepared', ['updateData' => $updateData]);

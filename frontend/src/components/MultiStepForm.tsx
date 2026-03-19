@@ -105,8 +105,41 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [brandName, setBrandName] = useState<string>('');
-  const [initialEditValues, setInitialEditValues] = useState<{ backgroundColor: string; buttonColor: string; logoPreview: string; brandName: string; formBgColor: string; formBgOpacity: number }>({ backgroundColor: '', buttonColor: '', logoPreview: '', brandName: '', formBgColor: '', formBgOpacity: 100 });
+  const [initialEditValues, setInitialEditValues] = useState<{
+    backgroundColor: string;
+    buttonColor: string;
+    logoPreview: string;
+    brandName: string;
+    formBgColor: string;
+    formBgOpacity: number;
+    showProofOfBilling: string;
+    showIdPrimary: string;
+    showIdSecondary: string;
+    showHouseFront: string;
+    showSecondaryNumber: string;
+    showCaptcha: string;
+  }>({
+    backgroundColor: '',
+    buttonColor: '',
+    logoPreview: '',
+    brandName: '',
+    formBgColor: '',
+    formBgOpacity: 100,
+    showProofOfBilling: 'active',
+    showIdPrimary: 'active',
+    showIdSecondary: 'active',
+    showHouseFront: 'active',
+    showSecondaryNumber: 'active',
+    showCaptcha: 'active'
+  });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  const [showProofOfBilling, setShowProofOfBilling] = useState('active');
+  const [showIdPrimary, setShowIdPrimary] = useState('active');
+  const [showIdSecondary, setShowIdSecondary] = useState('active');
+  const [showHouseFront, setShowHouseFront] = useState('active');
+  const [showSecondaryNumber, setShowSecondaryNumber] = useState('active');
+  const [showCaptcha, setShowCaptcha] = useState('active');
 
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -161,6 +194,13 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             if (result.data.brand_name) {
               setBrandName(result.data.brand_name);
             }
+
+            if (result.data.proof_of_billing) setShowProofOfBilling(result.data.proof_of_billing);
+            if (result.data.id_primary) setShowIdPrimary(result.data.id_primary);
+            if (result.data.id_secondary) setShowIdSecondary(result.data.id_secondary);
+            if (result.data.house_front_) setShowHouseFront(result.data.house_front_);
+            if (result.data.secondary_number) setShowSecondaryNumber(result.data.secondary_number);
+            if (result.data.captcha) setShowCaptcha(result.data.captcha);
           }
         }
       } catch (error) {
@@ -184,6 +224,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setBrandName(initialEditValues.brandName);
       setFormBgColor(initialEditValues.formBgColor);
       setFormBgOpacity(initialEditValues.formBgOpacity);
+      setShowProofOfBilling(initialEditValues.showProofOfBilling);
+      setShowIdPrimary(initialEditValues.showIdPrimary);
+      setShowIdSecondary(initialEditValues.showIdSecondary);
+      setShowHouseFront(initialEditValues.showHouseFront);
+      setShowSecondaryNumber(initialEditValues.showSecondaryNumber);
+      setShowCaptcha(initialEditValues.showCaptcha);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -195,7 +241,13 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         logoPreview: logoPreview,
         brandName: brandName,
         formBgColor: formBgColor,
-        formBgOpacity: formBgOpacity
+        formBgOpacity: formBgOpacity,
+        showProofOfBilling: showProofOfBilling,
+        showIdPrimary: showIdPrimary,
+        showIdSecondary: showIdSecondary,
+        showHouseFront: showHouseFront,
+        showSecondaryNumber: showSecondaryNumber,
+        showCaptcha: showCaptcha
       });
       setHasUnsavedChanges(false);
     }
@@ -249,6 +301,13 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
       const multiStepValue = currentLayout === 'multistep' ? 'active' : 'inactive';
       formData.append('multi_step', multiStepValue);
+
+      formData.append('proof_of_billing', showProofOfBilling);
+      formData.append('id_primary', showIdPrimary);
+      formData.append('id_secondary', showIdSecondary);
+      formData.append('house_front_', showHouseFront);
+      formData.append('secondary_number', showSecondaryNumber);
+      formData.append('captcha', showCaptcha);
 
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -517,9 +576,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         break;
       case 3:
         if (!formData.plan) missing.push('Plan');
-        if (!formData.proofOfBilling) missing.push('Proof of Billing');
-        if (!formData.governmentIdPrimary) missing.push('Government Valid ID (Primary)');
-        if (!formData.houseFrontPicture) missing.push('House Front Picture');
+        if (showProofOfBilling === 'active' && !formData.proofOfBilling) missing.push('Proof of Billing');
+        if (showIdPrimary === 'active' && !formData.governmentIdPrimary) missing.push('Government Valid ID (Primary)');
+        if (showHouseFront === 'active' && !formData.houseFrontPicture) missing.push('House Front Picture');
         if (!formData.privacyAgreement) missing.push('Privacy Agreement');
         if (formData.promo && !formData.promoProof) missing.push('Promo Proof Document');
         break;
@@ -546,7 +605,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (parseInt(captchaAnswer) !== captchaQuestion.answer) {
+    if (showCaptcha === 'active' && parseInt(captchaAnswer) !== captchaQuestion.answer) {
       setCaptchaError(true);
       return;
     }
@@ -857,28 +916,30 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (11 digits)</small>
         </div>
 
-        <div className="mb-4">
-          <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: getLabelColor() }}>
-            Secondary Mobile
-          </label>
-          <input
-            type="tel"
-            id="secondaryMobile"
-            name="secondaryMobile"
-            value={formData.secondaryMobile}
-            onChange={handleInputChange}
-            placeholder="09********"
-            pattern="09[0-9]{9}"
-            title="Please enter a valid mobile number (format: 09XXXXXXXXX)"
-            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            style={{
-              borderColor: getBorderColor(),
-              backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-              color: getTextColor()
-            }}
-          />
-          <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (optional)</small>
-        </div>
+        {showSecondaryNumber === 'active' && (
+          <div className="mb-4">
+            <label className="block font-medium mb-2" htmlFor="secondaryMobile" style={{ color: getLabelColor() }}>
+              Secondary Mobile
+            </label>
+            <input
+              type="tel"
+              id="secondaryMobile"
+              name="secondaryMobile"
+              value={formData.secondaryMobile}
+              onChange={handleInputChange}
+              placeholder="09********"
+              pattern="09[0-9]{9}"
+              title="Please enter a valid mobile number (format: 09XXXXXXXXX)"
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{
+                borderColor: getBorderColor(),
+                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                color: getTextColor()
+              }}
+            />
+            <small className="text-sm" style={{ color: getLabelColor(), opacity: 0.8 }}>Format: 09XXXXXXXXX (optional)</small>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1138,57 +1199,65 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <CameraFileInput
-          label="Proof of Billing"
-          name="proofOfBilling"
-          required={requireFields}
-          accept="image/*,application/pdf"
-          value={formData.proofOfBilling}
-          onChange={(file) => handleFileChange('proofOfBilling', file)}
-          labelColor={getLabelColor()}
-          borderColor={getBorderColor()}
-          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
-          textColor={getTextColor()}
-        />
+        {showProofOfBilling === 'active' && (
+          <CameraFileInput
+            label="Proof of Billing"
+            name="proofOfBilling"
+            required={requireFields}
+            accept="image/*,application/pdf"
+            value={formData.proofOfBilling}
+            onChange={(file) => handleFileChange('proofOfBilling', file)}
+            labelColor={getLabelColor()}
+            borderColor={getBorderColor()}
+            backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+            textColor={getTextColor()}
+          />
+        )}
 
-        <CameraFileInput
-          label="Government Valid ID (Primary)"
-          name="governmentIdPrimary"
-          required={requireFields}
-          accept="image/*,application/pdf"
-          value={formData.governmentIdPrimary}
-          onChange={(file) => handleFileChange('governmentIdPrimary', file)}
-          labelColor={getLabelColor()}
-          borderColor={getBorderColor()}
-          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
-          textColor={getTextColor()}
-        />
+        {showIdPrimary === 'active' && (
+          <CameraFileInput
+            label="Government Valid ID (Primary)"
+            name="governmentIdPrimary"
+            required={requireFields}
+            accept="image/*,application/pdf"
+            value={formData.governmentIdPrimary}
+            onChange={(file) => handleFileChange('governmentIdPrimary', file)}
+            labelColor={getLabelColor()}
+            borderColor={getBorderColor()}
+            backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+            textColor={getTextColor()}
+          />
+        )}
 
-        <CameraFileInput
-          label="Government Valid ID (Secondary)"
-          name="governmentIdSecondary"
-          required={false}
-          accept="image/*,application/pdf"
-          value={formData.governmentIdSecondary}
-          onChange={(file) => handleFileChange('governmentIdSecondary', file)}
-          labelColor={getLabelColor()}
-          borderColor={getBorderColor()}
-          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
-          textColor={getTextColor()}
-        />
+        {showIdSecondary === 'active' && (
+          <CameraFileInput
+            label="Government Valid ID (Secondary)"
+            name="governmentIdSecondary"
+            required={false}
+            accept="image/*,application/pdf"
+            value={formData.governmentIdSecondary}
+            onChange={(file) => handleFileChange('governmentIdSecondary', file)}
+            labelColor={getLabelColor()}
+            borderColor={getBorderColor()}
+            backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+            textColor={getTextColor()}
+          />
+        )}
 
-        <CameraFileInput
-          label="House Front Picture"
-          name="houseFrontPicture"
-          required={requireFields}
-          accept="image/*,application/pdf"
-          value={formData.houseFrontPicture}
-          onChange={(file) => handleFileChange('houseFrontPicture', file)}
-          labelColor={getLabelColor()}
-          borderColor={getBorderColor()}
-          backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
-          textColor={getTextColor()}
-        />
+        {showHouseFront === 'active' && (
+          <CameraFileInput
+            label="House Front Picture"
+            name="houseFrontPicture"
+            required={requireFields}
+            accept="image/*,application/pdf"
+            value={formData.houseFrontPicture}
+            onChange={(file) => handleFileChange('houseFrontPicture', file)}
+            labelColor={getLabelColor()}
+            borderColor={getBorderColor()}
+            backgroundColor={isColorDark(formBgColor) ? '#1a1a1a' : '#f9fafb'}
+            textColor={getTextColor()}
+          />
+        )}
 
         {formData.promo && formData.promo !== '' && (
           <div>
@@ -1210,40 +1279,42 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       </div>
 
       <div className="mt-6">
-        <div className="mb-4">
-          <label className="block font-medium mb-2" style={{ color: getLabelColor() }}>
-            Please solve this math problem: {captchaQuestion.num1} + {captchaQuestion.num2} = ?
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={captchaAnswer}
-              onChange={handleCaptchaChange}
-              required
-              placeholder="Enter your answer"
-              className="w-32 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
-              style={{
-                borderColor: captchaError ? '#EF4444' : getBorderColor(),
-                backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
-                color: getTextColor()
-              }}
-            />
-            <button
-              type="button"
-              onClick={generateCaptcha}
-              className="px-3 py-2 text-sm border-2 rounded-lg hover:bg-gray-50 transition-all"
-              style={{ borderColor: getBorderColor(), color: getLabelColor() }}
-              title="Generate new question"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+        {showCaptcha === 'active' && (
+          <div className="mb-4">
+            <label className="block font-medium mb-2" style={{ color: getLabelColor() }}>
+              Please solve this math problem: {captchaQuestion.num1} + {captchaQuestion.num2} = ?
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={captchaAnswer}
+                onChange={handleCaptchaChange}
+                required
+                placeholder="Enter your answer"
+                className="w-32 border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                style={{
+                  borderColor: captchaError ? '#EF4444' : getBorderColor(),
+                  backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
+                  color: getTextColor()
+                }}
+              />
+              <button
+                type="button"
+                onClick={generateCaptcha}
+                className="px-3 py-2 text-sm border-2 rounded-lg hover:bg-gray-50 transition-all"
+                style={{ borderColor: getBorderColor(), color: getLabelColor() }}
+                title="Generate new question"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
+            {captchaError && (
+              <p className="text-red-500 text-sm mt-2">Incorrect answer. Please try again.</p>
+            )}
           </div>
-          {captchaError && (
-            <p className="text-red-500 text-sm mt-2">Incorrect answer. Please try again.</p>
-          )}
-        </div>
+        )}
 
         <div className="flex items-center">
           <input
@@ -1473,7 +1544,39 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 </div>
                 <small className="text-xs mt-1 block" style={{ color: '#6B7280' }}>0% = transparent, 100% = opaque</small>
               </div>
+            <div className="mt-8 border-t pt-6">
+              <label className="block text-sm font-medium mb-4" style={{ color: '#374151' }}>
+                Form Field Visibility
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[
+                  { label: 'Proof of Billing', state: showProofOfBilling, setter: setShowProofOfBilling },
+                  { label: 'Primary ID', state: showIdPrimary, setter: setShowIdPrimary },
+                  { label: 'Secondary ID', state: showIdSecondary, setter: setShowIdSecondary },
+                  { label: 'House Front Image', state: showHouseFront, setter: setShowHouseFront },
+                  { label: 'Secondary Number', state: showSecondaryNumber, setter: setShowSecondaryNumber },
+                  { label: 'Captcha', state: showCaptcha, setter: setShowCaptcha },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <span className="text-sm font-medium" style={{ color: '#4B5563' }}>{item.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        item.setter(item.state === 'active' ? 'inactive' : 'active');
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                      style={{ backgroundColor: item.state === 'active' ? buttonColor : '#D1D5DB' }}
+                    >
+                      <span
+                        className={`${item.state === 'active' ? 'translate-x-6' : 'translate-x-1'} inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm`}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
+          </div>
 
             <div className="mt-4">
 
