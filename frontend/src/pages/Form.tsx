@@ -81,13 +81,13 @@ interface FormProps {
 }
 
 const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<FormRef>) {
-  const { 
-    showEditButton = false, 
-    onLayoutChange, 
-    currentLayout = 'original', 
-    isEditMode: externalIsEditMode, 
-    onEditModeChange, 
-    requireFields = true 
+  const {
+    showEditButton = false,
+    onLayoutChange,
+    currentLayout = 'original',
+    isEditMode: externalIsEditMode,
+    onEditModeChange,
+    requireFields = true
   } = props;
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const googleMapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
@@ -1972,7 +1972,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
 
               <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
                 <p className="text-gray-700 text-sm leading-relaxed">
-                  <span className="font-semibold">By continuing, you confirm that you have read, understood, and agree to the {brandName || 'ATSS'} Terms & Conditions and Privacy Policy,</span> including service limitations, billing policies, and acceptable use guidelines.
+                  <span className="font-semibold">By continuing, you confirm that you have read, understood, and agree to the Terms & Conditions and Privacy Policy,</span> including service limitations, billing policies, and acceptable use guidelines.
                 </p>
               </div>
             </div>
