@@ -44,6 +44,7 @@ class FormUIController extends Controller
                     'terms_and_condition' => null,
                     'privacy_policy' => null,
                     'contact_information' => null,
+                    'submit_modal' => null,
                 ]);
                 $settings = DB::table('form_ui')->first();
                 Log::info('Default settings created', ['settings' => $settings]);
@@ -101,6 +102,7 @@ class FormUIController extends Controller
                 'terms_and_condition' => 'nullable|string',
                 'privacy_policy' => 'nullable|string',
                 'contact_information' => 'nullable|string',
+                'submit_modal' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -175,6 +177,10 @@ class FormUIController extends Controller
 
             if ($request->has('contact_information')) {
                 $updateData['contact_information'] = $request->input('contact_information');
+            }
+
+            if ($request->has('submit_modal')) {
+                $updateData['submit_modal'] = $request->input('submit_modal');
             }
             
             Log::info('Update data prepared', ['updateData' => $updateData]);

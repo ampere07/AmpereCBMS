@@ -121,6 +121,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     termsAndCondition: string;
     privacyPolicy: string;
     contactInformation: string;
+    submitModal: string;
   }>({
     backgroundColor: '',
     buttonColor: '',
@@ -136,7 +137,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     showCaptcha: 'active',
     termsAndCondition: '',
     privacyPolicy: '',
-    contactInformation: ''
+    contactInformation: '',
+    submitModal: ''
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
@@ -149,6 +151,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const [termsAndCondition, setTermsAndCondition] = useState('');
   const [privacyPolicy, setPrivacyPolicy] = useState('');
   const [contactInformation, setContactInformation] = useState('');
+  const [submitModal, setSubmitModal] = useState('');
 
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -213,6 +216,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             if (result.data.terms_and_condition) setTermsAndCondition(result.data.terms_and_condition);
             if (result.data.privacy_policy) setPrivacyPolicy(result.data.privacy_policy);
             if (result.data.contact_information) setContactInformation(result.data.contact_information);
+            if (result.data.submit_modal) setSubmitModal(result.data.submit_modal);
           }
         }
       } catch (error) {
@@ -245,6 +249,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       setTermsAndCondition(initialEditValues.termsAndCondition);
       setPrivacyPolicy(initialEditValues.privacyPolicy);
       setContactInformation(initialEditValues.contactInformation);
+      setSubmitModal(initialEditValues.submitModal);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -265,7 +270,8 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         showCaptcha: showCaptcha,
         termsAndCondition: termsAndCondition,
         privacyPolicy: privacyPolicy,
-        contactInformation: contactInformation
+        contactInformation: contactInformation,
+        submitModal: submitModal
       });
       setHasUnsavedChanges(false);
     }
@@ -330,6 +336,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       formData.append('terms_and_condition', termsAndCondition);
       formData.append('privacy_policy', privacyPolicy);
       formData.append('contact_information', contactInformation);
+      formData.append('submit_modal', submitModal);
 
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -1633,6 +1640,28 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                   placeholder="Enter contact information..."
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Submit Modal Text
+                </label>
+                <textarea
+                  value={submitModal}
+                  onChange={(e) => {
+                    setSubmitModal(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter text to show in the success modal..."
+                />
+              </div>
             </div>
 
             <div className="mt-8 border-t pt-6">
@@ -1901,8 +1930,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 </svg>
               </div>
             </div>
-            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Submission Successful!</h3>
-            <p className="text-center text-gray-600 mb-6">Your application has been submitted successfully and is now pending approval.</p>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Application Received!</h3>
+            <p className="text-center text-gray-600 mb-6">
+              {submitModal || "thankyou for your application.we will review your requirements and contact you within 2-3 business days."}
+            </p>
             <div className="flex justify-center">
               <button
                 onClick={() => {

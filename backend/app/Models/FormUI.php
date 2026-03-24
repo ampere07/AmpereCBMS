@@ -28,6 +28,7 @@ class FormUI extends Model
         'terms_and_condition',
         'privacy_policy',
         'contact_information',
+        'submit_modal',
     ];
 
     protected $casts = [

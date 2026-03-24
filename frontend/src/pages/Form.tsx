@@ -127,6 +127,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
     termsAndCondition: string;
     privacyPolicy: string;
     contactInformation: string;
+    submitModal: string;
   }>({
     backgroundColor: '',
     buttonColor: '',
@@ -142,7 +143,8 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
     showCaptcha: 'active',
     termsAndCondition: '',
     privacyPolicy: '',
-    contactInformation: ''
+    contactInformation: '',
+    submitModal: ''
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -161,6 +163,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
   const [termsAndCondition, setTermsAndCondition] = useState('');
   const [privacyPolicy, setPrivacyPolicy] = useState('');
   const [contactInformation, setContactInformation] = useState('');
+  const [submitModal, setSubmitModal] = useState('');
 
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
@@ -222,6 +225,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
             if (result.data.terms_and_condition) setTermsAndCondition(result.data.terms_and_condition);
             if (result.data.privacy_policy) setPrivacyPolicy(result.data.privacy_policy);
             if (result.data.contact_information) setContactInformation(result.data.contact_information);
+            if (result.data.submit_modal) setSubmitModal(result.data.submit_modal);
           }
         }
       } catch (error) {
@@ -265,6 +269,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
       setTermsAndCondition(initialEditValues.termsAndCondition);
       setPrivacyPolicy(initialEditValues.privacyPolicy);
       setContactInformation(initialEditValues.contactInformation);
+      setSubmitModal(initialEditValues.submitModal);
       setLogoFile(null);
       setHasUnsavedChanges(false);
     }
@@ -285,7 +290,8 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
         showCaptcha: showCaptcha,
         termsAndCondition: termsAndCondition,
         privacyPolicy: privacyPolicy,
-        contactInformation: contactInformation
+        contactInformation: contactInformation,
+        submitModal: submitModal
       });
       setHasUnsavedChanges(false);
     }
@@ -355,6 +361,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
       formData.append('terms_and_condition', termsAndCondition);
       formData.append('privacy_policy', privacyPolicy);
       formData.append('contact_information', contactInformation);
+      formData.append('submit_modal', submitModal);
 
       const response = await fetch(`${apiBaseUrl}/api/form-ui/settings`, {
         method: 'POST',
@@ -1077,6 +1084,28 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                   placeholder="Enter contact information..."
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#374151' }}>
+                  Submit Modal Text
+                </label>
+                <textarea
+                  value={submitModal}
+                  onChange={(e) => {
+                    setSubmitModal(e.target.value);
+                    setHasUnsavedChanges(true);
+                  }}
+                  rows={4}
+                  className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  style={{
+                    borderColor: '#E5E7EB',
+                    backgroundColor: '#F9FAFB',
+                    color: '#1F2937',
+                    resize: 'vertical'
+                  }}
+                  placeholder="Enter text to show in the success modal..."
+                />
+              </div>
             </div>
 
             <div className="mt-8 border-t pt-6">
@@ -1770,7 +1799,9 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Application Received!</h3>
-            <p className="text-center text-gray-600 mb-6">Thank you for your application. We will review your requirements and contact you within 2-3 business days.</p>
+            <p className="text-center text-gray-600 mb-6">
+              {submitModal || "thankyou for your application.we will review your requirements and contact you within 2-3 business days."}
+            </p>
             <div className="flex justify-center">
               <button
                 onClick={() => {
