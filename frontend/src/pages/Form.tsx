@@ -3,6 +3,7 @@ import API_CONFIG from '../config/api';
 import LoadingModal from '../components/Loading/LoadingModal';
 import LocationMap from '../components/Map/LocationMap';
 import CameraFileInput from '../components/Form/CameraFileInput';
+import SearchableSelect from '../components/Form/SearchableSelect';
 
 interface Region {
   id: number;
@@ -650,8 +651,15 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
         missingImages.push('Promo Proof Document');
       }
 
-      if (missingImages.length > 0) {
-        setValidationMessage(`Please upload the following required documents:\n\n${missingImages.join('\n')}`);
+      if (missingImages.length > 0 || !formData.coordinates) {
+        let message = '';
+        if (missingImages.length > 0) {
+          message += `Please upload the following required documents:\n\n${missingImages.join('\n')}\n\n`;
+        }
+        if (!formData.coordinates) {
+          message += 'Please pin your location on the map.';
+        }
+        setValidationMessage(message);
         setShowValidationModal(true);
         return;
       }
@@ -1384,74 +1392,62 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                   <label className="block font-medium mb-2" htmlFor="region" style={{ color: '#374151' }}>
                     Region {requireFields && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <SearchableSelect
                     id="region"
                     name="region"
                     value={formData.region}
                     onChange={handleInputChange}
                     required={requireFields}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="Select region"
+                    options={regions.map(r => ({ id: r.id, name: r.region_name, code: r.region_code }))}
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
-                  >
-                    <option value="">Select region</option>
-                    {regions && regions.length > 0 && regions.map(region => (
-                      <option key={region.id} value={region.region_code}>{region.region_name}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="city" style={{ color: '#374151' }}>
                     City/Municipality {requireFields && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <SearchableSelect
                     id="city"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
                     required={requireFields}
                     disabled={!formData.region}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="Select city/municipality"
+                    options={cities.map(c => ({ id: c.id, name: c.city_name, code: c.city_code }))}
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
-                  >
-                    <option value="">Select city/municipality</option>
-                    {cities && cities.length > 0 && cities.map(city => (
-                      <option key={city.id} value={city.city_code}>{city.city_name}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <div className="mb-4">
                   <label className="block font-medium mb-2" htmlFor="barangay" style={{ color: '#374151' }}>
                     Barangay {requireFields && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <SearchableSelect
                     id="barangay"
                     name="barangay"
                     value={formData.barangay}
                     onChange={handleInputChange}
                     required={requireFields}
                     disabled={!formData.city}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    placeholder="Select barangay"
+                    options={barangays.map(b => ({ id: b.id, name: b.barangay_name, code: b.barangay_code }))}
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
-                  >
-                    <option value="">Select barangay</option>
-                    {barangays && barangays.length > 0 && barangays.map(barangay => (
-                      <option key={barangay.id} value={barangay.barangay_code}>{barangay.barangay_name}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
 
@@ -1461,14 +1457,6 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                     <label className="block font-medium" htmlFor="installationAddress" style={{ color: '#374151' }}>
                       Installation Address {requireFields && <span className="text-red-500">*</span>}
                     </label>
-                    <button
-                      type="button"
-                      onClick={handleOpenMap}
-                      className="px-3 py-1 text-sm font-medium text-white rounded hover:opacity-90 transition-all"
-                      style={{ backgroundColor: buttonColor }}
-                    >
-                      Pin Location
-                    </button>
                   </div>
                   <textarea
                     id="installationAddress"
@@ -1485,19 +1473,28 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                       color: '#1F2937'
                     }}
                   ></textarea>
-                  <div className="mt-2">
+                  <div className="mt-2 relative">
                     <input
                       type="text"
                       value={formData.coordinates}
                       readOnly
+                      required={requireFields}
                       placeholder="Coordinates will appear here after pinning location"
-                      className="w-full border rounded px-3 py-2"
+                      className="w-full border rounded px-3 py-2 pr-28"
                       style={{
                         borderColor: '#E5E7EB',
                         backgroundColor: '#F3F4F6',
                         color: '#6B7280'
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={handleOpenMap}
+                      className="absolute right-1 top-1 bottom-1 px-3 py-1 text-xs font-medium text-white rounded hover:opacity-90 transition-all"
+                      style={{ backgroundColor: buttonColor }}
+                    >
+                      Pin Location
+                    </button>
                   </div>
                 </div>
 
@@ -1528,25 +1525,19 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                   <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>
                     Referred By
                   </label>
-                  <select
+                  <SearchableSelect
                     id="referredBy"
                     name="referredBy"
                     value={formData.referredBy}
                     onChange={handleInputChange}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="None / Walk-in"
+                    options={referrers.map(r => ({ id: r.id, name: r.name, code: r.name }))}
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
                       color: '#1F2937'
                     }}
-                  >
-                    <option value="">None / Walk-in</option>
-                    {referrers.map(referrer => (
-                      <option key={referrer.id} value={referrer.name}>
-                        {referrer.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
             </section>
@@ -1559,33 +1550,27 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                   <label className="block font-medium mb-2" htmlFor="plan" style={{ color: '#374151' }}>
                     Plan {requireFields && <span className="text-red-500">*</span>}
                   </label>
-                  <select
+                  <SearchableSelect
                     id="plan"
                     name="plan"
                     value={formData.plan}
                     onChange={handleInputChange}
                     required={requireFields}
-                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{
-                      borderColor: '#E5E7EB',
-                      backgroundColor: '#FFFFFF',
-                      color: '#1F2937'
-                    }}
-                  >
-                    <option value="">Select plan</option>
-                    {plans
+                    placeholder="Select plan"
+                    options={plans
                       .filter(plan => {
                         const planNameLower = plan.plan_name.toLowerCase();
                         return !planNameLower.includes('wfh') &&
                           !planNameLower.includes('vip') &&
                           !planNameLower.includes('work from home');
                       })
-                      .map(plan => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.plan_name} {Math.floor(plan.price)}
-                        </option>
-                      ))}
-                  </select>
+                      .map(p => ({ id: p.id, name: `${p.plan_name} ${Math.floor(p.price)}`, code: String(p.id) }))}
+                    style={{
+                      borderColor: '#E5E7EB',
+                      backgroundColor: '#FFFFFF',
+                      color: '#1F2937'
+                    }}
+                  />
                 </div>
 
                 {promos && promos.length > 0 && (
@@ -1593,25 +1578,19 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                     <label className="block font-medium mb-2" htmlFor="promo" style={{ color: '#374151' }}>
                       Promo
                     </label>
-                    <select
+                    <SearchableSelect
                       id="promo"
                       name="promo"
                       value={formData.promo}
                       onChange={handleInputChange}
-                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="None"
+                      options={promos.map(p => ({ id: p.id, name: p.name, code: p.name }))}
                       style={{
                         borderColor: '#E5E7EB',
                         backgroundColor: '#FFFFFF',
                         color: '#1F2937'
                       }}
-                    >
-                      <option value="">None</option>
-                      {promos.map(promo => (
-                        <option key={promo.id} value={promo.name}>
-                          {promo.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 )}
               </div>

@@ -28,10 +28,18 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Maximum of 2MB');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      
+      setError(null);
       onChange(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -42,6 +50,7 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
   };
 
   const handleRemove = () => {
+    setError(null);
     onChange(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -74,6 +83,9 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
             <Upload className="w-5 h-5" />
             <span className="text-sm">Upload File</span>
           </button>
+          {error && (
+            <p className="mt-1 text-xs text-red-500 font-medium">{error}</p>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
