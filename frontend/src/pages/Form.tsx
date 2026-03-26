@@ -446,6 +446,24 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
   });
 
   useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setMapCenter(newPos);
+          setSelectedPosition(newPos);
+        },
+        (error) => {
+          console.error('Error getting initial location:', error);
+        }
+      );
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchRegions = async () => {
       try {
         const response = await fetch(`${apiBaseUrl}/api/region`);
@@ -756,6 +774,20 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
     setShowMapModal(true);
     if (selectedPosition) {
       setMapCenter(selectedPosition);
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newPos = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setSelectedPosition(newPos);
+          setMapCenter(newPos);
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+        }
+      );
     }
   };
 
