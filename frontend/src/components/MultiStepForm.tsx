@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from 'react';
 import LoadingModal from './Loading/LoadingModal';
 import LocationMap from './Map/LocationMap';
 import CameraFileInput from './Form/CameraFileInput';
@@ -84,10 +84,18 @@ interface MultiStepFormProps {
 const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEditButton = false, onLayoutChange, currentLayout = 'multistep', isEditMode: externalIsEditMode, onEditModeChange, requireFields = true }, ref) => {
   const apiBaseUrl = process.env.REACT_APP_API_URL || "https://backend1.atssfiber.ph";
   const googleMapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
+  const COVERAGE_CENTER = { lat: 14.645650461733812, lng: 121.13685786724092 };
+  const COVERAGE_RADIUS = 5000; // 50km in meters
+
   const [currentStep, setCurrentStep] = useState(1);
   const [showMapModal, setShowMapModal] = useState(false);
-  const [mapCenter, setMapCenter] = useState({ lat: 14.5995, lng: 120.9842 });
+  const [mapCenter, setMapCenter] = useState(COVERAGE_CENTER);
   const [selectedPosition, setSelectedPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showCoverageModal, setShowCoverageModal] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -423,6 +431,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   });
 
   useEffect(() => {
+    // Set initial view to coverage center
+    setMapCenter(COVERAGE_CENTER);
+    
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -430,8 +441,13 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
-          setMapCenter(newPos);
-          setSelectedPosition(newPos);
+          
+          // Only auto-center if user is within some reasonable distance or just let them see the coverage area
+          const distance = calculateDistance(COVERAGE_CENTER.lat, COVERAGE_CENTER.lng, newPos.lat, newPos.lng);
+          if (distance <= COVERAGE_RADIUS / 1000) {
+            setMapCenter(newPos);
+            setSelectedPosition(newPos);
+          }
         },
         (error) => {
           console.error('Error getting initial location:', error);
@@ -735,22 +751,12 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
   const handleOpenMap = () => {
     setShowMapModal(true);
+    setSearchQuery('');
+    setRecommendations([]);
     if (selectedPosition) {
       setMapCenter(selectedPosition);
-    } else if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const newPos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          };
-          setSelectedPosition(newPos);
-          setMapCenter(newPos);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-        }
-      );
+    } else {
+      setMapCenter(COVERAGE_CENTER);
     }
   };
 
@@ -779,12 +785,75 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
     setSelectedPosition({ lat, lng });
   };
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
   const handleConfirmLocation = () => {
     if (selectedPosition) {
+      const distance = calculateDistance(
+        COVERAGE_CENTER.lat,
+        COVERAGE_CENTER.lng,
+        selectedPosition.lat,
+        selectedPosition.lng
+      );
+
+      if (distance > (COVERAGE_RADIUS / 1000)) {
+        setShowCoverageModal(true);
+        return;
+      }
+
       const coordString = `${selectedPosition.lat.toFixed(6)}, ${selectedPosition.lng.toFixed(6)}`;
       setFormData(prev => ({ ...prev, coordinates: coordString }));
       setShowMapModal(false);
     }
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (query.trim().length < 3) {
+      setRecommendations([]);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=ph`);
+        if (response.ok) {
+          const data = await response.json();
+          setRecommendations(data);
+        }
+      } catch (error) {
+        console.error('Error fetching recommendations:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500);
+  };
+
+  const handleSelectRecommendation = (rec: any) => {
+    const newPos = {
+      lat: parseFloat(rec.lat),
+      lng: parseFloat(rec.lon)
+    };
+    setSelectedPosition(newPos);
+    setMapCenter(newPos);
+    setSearchQuery(rec.display_name);
+    setRecommendations([]);
   };
 
   const handleReset = () => {
@@ -1351,7 +1420,10 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             id="privacyAgreement"
             name="privacyAgreement"
             checked={formData.privacyAgreement}
-            onChange={handleCheckboxChange}
+            onChange={(e) => {
+              if (e.target.checked) setShowTermsModal(true);
+              handleCheckboxChange(e);
+            }}
             required
             className="mr-2 h-4 w-4"
           />
@@ -1963,14 +2035,47 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
             </button>
             <h3 className="text-xl font-semibold text-center text-gray-900 mb-4">Pin Your Location</h3>
             <p className="text-center text-gray-600 mb-4">Click on the map or drag the marker to set your location</p>
-            <div className="mb-4 flex justify-center">
+            <div className="mb-4 flex flex-col md:flex-row items-center justify-center gap-3">
+              <div className="relative w-full md:w-72">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Search location..."
+                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                  style={{ borderColor: '#E5E7EB' }}
+                />
+                {isSearching && (
+                  <div className="absolute right-3 top-2.5">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-blue-600"></div>
+                  </div>
+                )}
+                {recommendations.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-lg mt-1 shadow-xl z-[1000] max-h-60 overflow-y-auto">
+                    {recommendations.map((rec, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectRecommendation(rec)}
+                        className="px-4 py-2.5 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-50 last:border-b-0 transition-colors"
+                      >
+                        <div className="font-medium text-gray-800 truncate">{rec.display_name}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleGetMyLocation}
-                className="px-4 py-2 text-white rounded hover:opacity-90 transition-all flex items-center gap-2"
+                className="px-4 py-2 text-white rounded hover:opacity-90 transition-all flex items-center gap-2 whitespace-nowrap text-sm"
                 style={{ backgroundColor: buttonColor }}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -1982,6 +2087,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 center={mapCenter}
                 onLocationSelect={handleMapLocationSelect}
                 buttonColor={buttonColor}
+                coverageArea={{ ...COVERAGE_CENTER, radius: COVERAGE_RADIUS }}
               />
             </div>
             <div className="mb-4">
@@ -2018,6 +2124,32 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                 style={{ backgroundColor: buttonColor }}
               >
                 Confirm Location
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showCoverageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000]">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-red-100 rounded-full p-3">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold text-center text-gray-900 mb-2">Outside Coverage!</h3>
+            <p className="text-center text-gray-600 mb-6">
+              Your location is outside coverage of the company. Please select a point within the highlighted circle.
+            </p>
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowCoverageModal(false)}
+                className="px-6 py-2 text-white rounded hover:opacity-90 transition-colors"
+                style={{ backgroundColor: buttonColor }}
+              >
+                Go Back
               </button>
             </div>
           </div>

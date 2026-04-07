@@ -5,22 +5,37 @@ interface LocationMapProps {
   center: { lat: number; lng: number };
   onLocationSelect: (lat: number, lng: number) => void;
   buttonColor: string;
+  coverageArea?: { lat: number; lng: number; radius: number };
 }
 
-const LocationMap: React.FC<LocationMapProps> = ({ center, onLocationSelect, buttonColor }) => {
+const LocationMap: React.FC<LocationMapProps> = ({ center, onLocationSelect, buttonColor, coverageArea }) => {
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const circleRef = useRef<L.Circle | null>(null);
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current).setView([center.lat, center.lng], 15);
+    const map = L.map(mapContainerRef.current, {
+      maxBounds: [[4, 116], [21, 127]],
+      maxBoundsViscosity: 1.0
+    }).setView([center.lat, center.lng], 15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19,
     }).addTo(map);
+
+    if (coverageArea) {
+      const circle = L.circle([coverageArea.lat, coverageArea.lng], {
+        color: buttonColor,
+        fillColor: buttonColor,
+        fillOpacity: 0.1,
+        radius: coverageArea.radius,
+      }).addTo(map);
+      circleRef.current = circle;
+    }
 
     const customIcon = L.divIcon({
       className: 'custom-marker',
@@ -58,7 +73,7 @@ const LocationMap: React.FC<LocationMapProps> = ({ center, onLocationSelect, but
 
   useEffect(() => {
     if (mapRef.current && markerRef.current) {
-      mapRef.current.setView([center.lat, center.lng], 15);
+      mapRef.current.setView([center.lat, center.lng]);
       markerRef.current.setLatLng([center.lat, center.lng]);
     }
   }, [center]);
