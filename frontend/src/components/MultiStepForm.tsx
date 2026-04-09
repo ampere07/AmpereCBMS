@@ -165,13 +165,16 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
   const convertGDriveUrl = (url: string): string => {
     if (!url) return '';
 
+    let fileId = '';
     if (url.includes('drive.google.com/file/d/')) {
-      const fileId = url.split('/file/d/')[1].split('/')[0];
-      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+      fileId = url.split('/file/d/')[1].split('/')[0];
+    } else if (url.includes('drive.google.com/uc?')) {
+      const match = url.match(/[?&]id=([^&]+)/);
+      if (match) fileId = match[1];
     }
 
-    if (url.includes('drive.google.com/uc?')) {
-      return url;
+    if (fileId) {
+      return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
     }
 
     return url;
@@ -358,6 +361,9 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
+          if (result.data && result.data.logo_url) {
+            setLogoPreview(convertGDriveUrl(result.data.logo_url));
+          }
           setHasUnsavedChanges(false);
           if (onEditModeChange) {
             onEditModeChange(false);
