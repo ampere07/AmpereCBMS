@@ -1633,13 +1633,14 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                   <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: '#374151' }}>
                     Referred By
                   </label>
-                  <SearchableSelect
+                  <input
+                    type="text"
                     id="referredBy"
                     name="referredBy"
                     value={formData.referredBy}
                     onChange={handleInputChange}
                     placeholder="None / Walk-in"
-                    options={referrers.map(r => ({ id: r.id, name: r.name, code: r.name }))}
+                    className="w-full border-2 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',
@@ -1672,7 +1673,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                           !planNameLower.includes('vip') &&
                           !planNameLower.includes('work from home');
                       })
-                      .map(p => ({ id: p.id, name: `${p.plan_name} ${Math.floor(p.price)}`, code: String(p.id) }))}
+                      .map(p => ({ id: p.id, name: p.description || `${p.plan_name} ${Math.floor(p.price)}`, code: `${p.plan_name} ${Math.floor(p.price)}` }))}
                     style={{
                       borderColor: '#E5E7EB',
                       backgroundColor: '#FFFFFF',

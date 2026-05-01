@@ -1226,13 +1226,14 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           <label className="block font-medium mb-2" htmlFor="referredBy" style={{ color: getLabelColor() }}>
             Referred By
           </label>
-          <SearchableSelect
+          <input
+            type="text"
             id="referredBy"
             name="referredBy"
             value={formData.referredBy}
             onChange={handleInputChange}
             placeholder="None / Walk-in"
-            options={referrers.map(r => ({ id: r.id, name: r.name, code: r.name }))}
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             style={{
               borderColor: getBorderColor(),
               backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
@@ -1267,7 +1268,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
                   !planNameLower.includes('vip') &&
                   !planNameLower.includes('work from home');
               })
-              .map(p => ({ id: p.id, name: `${p.plan_name} ${Math.floor(p.price)}`, code: String(p.id) }))}
+              .map(p => ({ id: p.id, name: p.description || `${p.plan_name} ${Math.floor(p.price)}`, code: `${p.plan_name} ${Math.floor(p.price)}` }))}
             style={{
               borderColor: getBorderColor(),
               backgroundColor: isColorDark(formBgColor) ? '#1a1a1a' : '#ffffff',
