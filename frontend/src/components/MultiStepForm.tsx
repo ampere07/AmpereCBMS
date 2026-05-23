@@ -642,14 +642,11 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
         if (!formData.barangay) missing.push('Barangay');
         if (!formData.installationAddress) missing.push('Installation Address');
         if (!formData.landmark) missing.push('Landmark');
-        if (!formData.coordinates) missing.push('Map Pin Location');
 
         break;
       case 3:
         if (!formData.plan) missing.push('Plan');
-        if (showProofOfBilling === 'active' && !formData.proofOfBilling) missing.push('Proof of Billing');
         if (showIdPrimary === 'active' && !formData.governmentIdPrimary) missing.push('Government Valid ID (Primary)');
-        if (showHouseFront === 'active' && !formData.houseFrontPicture) missing.push('House Front Picture');
         if (!formData.privacyAgreement) missing.push('Privacy Agreement');
         if (formData.promo && !formData.promoProof) missing.push('Promo Proof Document');
         break;
@@ -1178,7 +1175,6 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
               type="text"
               value={formData.coordinates}
               readOnly
-              required={requireFields}
               placeholder="Coordinates will appear here after pinning location"
               className="w-full border rounded px-3 py-2 pr-28"
               style={{
@@ -1301,14 +1297,14 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
 
       <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-700" style={{ color: getTextColor() }}>Upload Documents</h3>
 
-      <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
+      <p className="mb-4 text-sm" style={{ color: getLabelColor() }}>Allowed: JPG/PNG/PDF, up to 10 MB each.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {showProofOfBilling === 'active' && (
           <CameraFileInput
             label="Proof of Billing"
             name="proofOfBilling"
-            required={requireFields}
+            required={false}
             accept="image/*,application/pdf"
             value={formData.proofOfBilling}
             onChange={(file) => handleFileChange('proofOfBilling', file)}
@@ -1353,7 +1349,7 @@ const MultiStepForm = forwardRef<MultiStepFormRef, MultiStepFormProps>(({ showEd
           <CameraFileInput
             label="House Front Picture"
             name="houseFrontPicture"
-            required={requireFields}
+            required={false}
             accept="image/*,application/pdf"
             value={formData.houseFrontPicture}
             onChange={(file) => handleFileChange('houseFrontPicture', file)}

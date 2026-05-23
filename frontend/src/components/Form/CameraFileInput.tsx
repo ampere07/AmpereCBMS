@@ -33,8 +33,8 @@ const CameraFileInput: React.FC<CameraFileInputProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setError('Maximum of 2MB');
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Maximum of 10MB');
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }

@@ -676,33 +676,20 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
 
 
 
-      if (showProofOfBilling === 'active' && !formData.proofOfBilling) {
-        missingImages.push('Proof of Billing');
-      }
 
       if (showIdPrimary === 'active' && !formData.governmentIdPrimary) {
         missingImages.push('Government Valid ID (Primary)');
-      }
-
-      if (showHouseFront === 'active' && !formData.houseFrontPicture) {
-        missingImages.push('House Front Picture');
       }
 
       if (formData.promo && formData.promo !== '' && !formData.promoProof) {
         missingImages.push('Promo Proof Document');
       }
 
-      if (missingImages.length > 0 || !formData.coordinates) {
-        let message = '';
-        if (missingImages.length > 0) {
-          message += `Please upload the following required documents:\n\n${missingImages.join('\n')}\n\n`;
-        }
-        if (!formData.coordinates) {
-          message += 'Please pin your location on the map.';
-        }
-        setValidationMessage(message);
-        setShowValidationModal(true);
-        return;
+      if (missingImages.length > 0) {
+      let message = `Please upload the following required documents:\n\n${missingImages.join('\n')}`;
+      setValidationMessage(message);
+      setShowValidationModal(true);
+      return;
       }
     }
 
@@ -1586,7 +1573,6 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                       type="text"
                       value={formData.coordinates}
                       readOnly
-                      required={requireFields}
                       placeholder="Coordinates will appear here after pinning location"
                       className="w-full border rounded px-3 py-2 pr-28"
                       style={{
@@ -1708,14 +1694,14 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
             <section className="mb-8">
               <h3 className="text-lg font-medium mb-4 pb-2 border-b" style={{ color: '#1F2937', borderColor: '#E5E7EB' }}>Upload Documents</h3>
 
-              <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 2 MB each.</p>
+              <p className="mb-4 text-sm" style={{ color: '#6B7280' }}>Allowed: JPG/PNG/PDF, up to 10 MB each.</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {showProofOfBilling === 'active' && (
                   <CameraFileInput
                     label="Proof of Billing"
                     name="proofOfBilling"
-                    required={requireFields}
+                    required={false}
                     accept="image/*,application/pdf"
                     value={formData.proofOfBilling}
                     onChange={(file) => handleFileChange('proofOfBilling', file)}
@@ -1760,7 +1746,7 @@ const Form = forwardRef(function Form(props: FormProps, ref: React.ForwardedRef<
                   <CameraFileInput
                     label="House Front Picture"
                     name="houseFrontPicture"
-                    required={requireFields}
+                    required={false}
                     accept="image/*,application/pdf"
                     value={formData.houseFrontPicture}
                     onChange={(file) => handleFileChange('houseFrontPicture', file)}
