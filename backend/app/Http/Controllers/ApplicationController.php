@@ -42,6 +42,7 @@ class ApplicationController extends Controller
                 'governmentIdSecondary' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
                 'houseFrontPicture' => 'required|file|mimes:jpg,jpeg,png|max:10240',
                 'promoProof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'created_by_email' => 'nullable|email|max:255',
             ]);
 
             if ($validator->fails()) {
@@ -98,6 +99,13 @@ class ApplicationController extends Controller
                 $application->proof_of_billing_url = 'processing';
                 $application->government_valid_id_url = 'processing';
                 $application->house_front_picture_url = 'processing';
+                
+                if ($request->has('created_by_email')) {
+                    $user = DB::table('users')->where('email_address', $request->created_by_email)->first();
+                    if ($user) {
+                        $application->created_by_user_id = $user->id;
+                    }
+                }
 
                 $application->save();
 

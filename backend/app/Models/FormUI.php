@@ -36,3 +36,4 @@ class FormUI extends Model
         'updated_at' => 'datetime',
     ];
 }
+

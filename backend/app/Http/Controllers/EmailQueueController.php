@@ -181,3 +181,4 @@ class EmailQueueController extends Controller
         return response()->json($stats);
     }
 }
+
